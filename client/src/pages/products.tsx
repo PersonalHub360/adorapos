@@ -46,6 +46,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ProductForm } from "@/components/products/ProductForm";
 
+const categories = ["Shirts", "Pants", "Dresses", "Jackets", "Accessories", "Shoes"];
+
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
