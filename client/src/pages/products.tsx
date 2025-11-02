@@ -61,6 +61,13 @@ export default function Products() {
   const [barcodePrintDialogOpen, setBarcodePrintDialogOpen] = useState(false);
   const [selectedBarcodeProducts, setSelectedBarcodeProducts] = useState<Array<{product: Product, quantity: number}>>([]);
   const [barcodeSearchQuery, setBarcodeSearchQuery] = useState("");
+  const [barcodePreviewOpen, setBarcodePreviewOpen] = useState(false);
+  const [selectedPaperSizeId, setSelectedPaperSizeId] = useState<string>("");
+  const [printOptions, setPrintOptions] = useState({
+    productName: true,
+    price: true,
+    promoPrice: false,
+  });
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -496,7 +503,8 @@ export default function Products() {
                   <input
                     type="checkbox"
                     id="print-product-name"
-                    defaultChecked
+                    checked={printOptions.productName}
+                    onChange={(e) => setPrintOptions({...printOptions, productName: e.target.checked})}
                     className="h-4 w-4"
                   />
                   <Label htmlFor="print-product-name" className="font-normal cursor-pointer">
@@ -507,7 +515,8 @@ export default function Products() {
                   <input
                     type="checkbox"
                     id="print-price"
-                    defaultChecked
+                    checked={printOptions.price}
+                    onChange={(e) => setPrintOptions({...printOptions, price: e.target.checked})}
                     className="h-4 w-4"
                   />
                   <Label htmlFor="print-price" className="font-normal cursor-pointer">
@@ -518,6 +527,8 @@ export default function Products() {
                   <input
                     type="checkbox"
                     id="print-promo-price"
+                    checked={printOptions.promoPrice}
+                    onChange={(e) => setPrintOptions({...printOptions, promoPrice: e.target.checked})}
                     className="h-4 w-4"
                   />
                   <Label htmlFor="print-promo-price" className="font-normal cursor-pointer">
@@ -530,7 +541,7 @@ export default function Products() {
             {/* Paper Size */}
             <div className="space-y-2">
               <Label>Paper Size *</Label>
-              <Select>
+              <Select value={selectedPaperSizeId} onValueChange={setSelectedPaperSizeId}>
                 <SelectTrigger data-testid="select-paper-size">
                   <SelectValue placeholder="Select paper size..." />
                 </SelectTrigger>
@@ -563,17 +574,105 @@ export default function Products() {
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={() => {
-                  toast({
-                    title: "Printing barcodes",
-                    description: `Generating barcodes for ${selectedBarcodeProducts.length} product(s)`,
-                  });
-                  // In a real implementation, this would generate and print the barcodes
+                  if (selectedBarcodeProducts.length === 0) {
+                    toast({
+                      title: "No products selected",
+                      description: "Please add at least one product to print barcodes.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  if (!selectedPaperSizeId) {
+                    toast({
+                      title: "Paper size required",
+                      description: "Please select a paper size.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  setBarcodePrintDialogOpen(false);
+                  setBarcodePreviewOpen(true);
                 }}
                 data-testid="button-submit-barcode"
               >
                 Submit
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barcode Preview Dialog */}
+      <Dialog open={barcodePreviewOpen} onOpenChange={setBarcodePreviewOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Barcode</DialogTitle>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.print();
+                  toast({
+                    title: "Printing",
+                    description: "Sending to printer...",
+                  });
+                }}
+                data-testid="button-print-barcode"
+              >
+                Print
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {selectedBarcodeProducts.map((item) => (
+              <div key={item.product.id} className="text-center space-y-2 p-4 border rounded-md">
+                {printOptions.productName && (
+                  <div className="font-medium text-sm">{item.product.name}</div>
+                )}
+                
+                {/* Barcode SVG */}
+                <div className="flex justify-center py-2">
+                  <svg width="200" height="80" className="barcode">
+                    <rect x="0" y="0" width="200" height="80" fill="white"/>
+                    {/* Simple barcode representation */}
+                    <g transform="translate(10, 10)">
+                      {[...Array(20)].map((_, i) => (
+                        <rect
+                          key={i}
+                          x={i * 9}
+                          y="0"
+                          width={Math.random() > 0.5 ? 3 : 2}
+                          height="40"
+                          fill="black"
+                        />
+                      ))}
+                    </g>
+                    <text x="100" y="65" textAnchor="middle" fontSize="12" fill="black">
+                      {item.product.sku || '00000000'}
+                    </text>
+                  </svg>
+                </div>
+
+                {printOptions.price && (
+                  <div className="text-sm">
+                    Price: $ {parseFloat(item.product.price).toFixed(2)}
+                  </div>
+                )}
+
+                {printOptions.promoPrice && (
+                  <div className="text-sm text-red-600">
+                    Promo: $ {(parseFloat(item.product.price) * 0.9).toFixed(2)}
+                  </div>
+                )}
+
+                {item.quantity > 1 && (
+                  <div className="text-xs text-muted-foreground">
+                    Quantity: {item.quantity}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
