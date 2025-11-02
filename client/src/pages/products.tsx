@@ -748,7 +748,18 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(formData);
+    
+    // Ensure numeric fields have valid values
+    const submitData = {
+      ...formData,
+      purchasePrice: formData.purchasePrice || "0",
+      price: formData.price || "0",
+      taxRate: formData.taxRate || "0",
+      stock: formData.stock || 0,
+      lowStockThreshold: formData.lowStockThreshold || 5,
+    };
+    
+    mutation.mutate(submitData);
   };
 
   const generateSKU = () => {

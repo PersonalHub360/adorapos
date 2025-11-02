@@ -63,11 +63,11 @@ export const products = pgTable("products", {
 });
 
 export const insertProductSchema = createInsertSchema(products, {
-  purchasePrice: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()),
-  price: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()),
-  taxRate: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()).optional(),
-  stock: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
-  lowStockThreshold: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
+  purchasePrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? val : val.toString()),
+  price: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? val : val.toString()),
+  taxRate: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? val : val.toString()).optional().nullable(),
+  stock: z.union([z.number(), z.string()]).transform(val => typeof val === 'string' ? parseInt(val) : val),
+  lowStockThreshold: z.union([z.number(), z.string()]).transform(val => typeof val === 'string' ? parseInt(val) : val),
 }).omit({
   id: true,
   createdAt: true,
