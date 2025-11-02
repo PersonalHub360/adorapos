@@ -1,38 +1,392 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  users,
+  products,
+  customers,
+  sales,
+  saleItems,
+  promoCodes,
+  type User,
+  type UpsertUser,
+  type Product,
+  type InsertProduct,
+  type Customer,
+  type InsertCustomer,
+  type Sale,
+  type InsertSale,
+  type SaleItem,
+  type InsertSaleItem,
+  type PromoCode,
+  type InsertPromoCode,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
+
+  // Product operations
+  getAllProducts(): Promise<Product[]>;
+  getProduct(id: string): Promise<Product | undefined>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
+  deleteProduct(id: string): Promise<void>;
+  getLowStockProducts(): Promise<Product[]>;
+
+  // Customer operations
+  getAllCustomers(): Promise<Customer[]>;
+  getCustomer(id: string): Promise<Customer | undefined>;
+  createCustomer(customer: InsertCustomer): Promise<Customer>;
+  updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer>;
+  deleteCustomer(id: string): Promise<void>;
+
+  // Sales operations
+  createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<Sale>;
+  getSale(id: string): Promise<Sale | undefined>;
+  getRecentSales(limit?: number): Promise<Sale[]>;
+  getSalesByCustomer(customerId: string): Promise<Sale[]>;
+  getSalesByPeriod(startDate: Date, endDate: Date): Promise<Sale[]>;
+
+  // Promo code operations
+  getAllPromoCodes(): Promise<PromoCode[]>;
+  getPromoCode(id: string): Promise<PromoCode | undefined>;
+  getPromoCodeByCode(code: string): Promise<PromoCode | undefined>;
+  createPromoCode(promoCode: InsertPromoCode): Promise<PromoCode>;
+  updatePromoCode(id: string, promoCode: Partial<InsertPromoCode>): Promise<PromoCode>;
+  deletePromoCode(id: string): Promise<void>;
+
+  // Dashboard & Reports
+  getDashboardStats(): Promise<{
+    todaySales: number;
+    todayTransactions: number;
+    lowStockCount: number;
+    totalCustomers: number;
+  }>;
+  getSalesReport(period: 'today' | 'week' | 'month'): Promise<{
+    totalSales: number;
+    totalRevenue: number;
+    totalTransactions: number;
+    averageTicket: number;
+    topProducts: Array<{
+      product: Product;
+      quantitySold: number;
+      revenue: number;
+    }>;
+    salesByPaymentMethod: Record<string, number>;
+  }>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return user;
+  }
+
+  // Product operations
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products).orderBy(desc(products.createdAt));
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const [newProduct] = await db.insert(products).values(product).returning();
+    return newProduct;
+  }
+
+  async updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product> {
+    const [updated] = await db
+      .update(products)
+      .set({ ...product, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteProduct(id: string): Promise<void> {
+    await db.delete(products).where(eq(products.id, id));
+  }
+
+  async getLowStockProducts(): Promise<Product[]> {
+    return await db
+      .select()
+      .from(products)
+      .where(sql`${products.stock} <= ${products.lowStockThreshold}`)
+      .orderBy(products.stock);
+  }
+
+  // Customer operations
+  async getAllCustomers(): Promise<Customer[]> {
+    return await db.select().from(customers).orderBy(desc(customers.createdAt));
+  }
+
+  async getCustomer(id: string): Promise<Customer | undefined> {
+    const [customer] = await db.select().from(customers).where(eq(customers.id, id));
+    return customer;
+  }
+
+  async createCustomer(customer: InsertCustomer): Promise<Customer> {
+    const [newCustomer] = await db.insert(customers).values(customer).returning();
+    return newCustomer;
+  }
+
+  async updateCustomer(id: string, customer: Partial<InsertCustomer>): Promise<Customer> {
+    const [updated] = await db
+      .update(customers)
+      .set({ ...customer, updatedAt: new Date() })
+      .where(eq(customers.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCustomer(id: string): Promise<void> {
+    await db.delete(customers).where(eq(customers.id, id));
+  }
+
+  // Sales operations
+  async createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<Sale> {
+    // Use a transaction to create sale and items, and update inventory
+    return await db.transaction(async (tx) => {
+      // Create the sale
+      const [newSale] = await tx.insert(sales).values(sale).returning();
+
+      // Create sale items
+      if (items.length > 0) {
+        await tx.insert(saleItems).values(
+          items.map(item => ({
+            ...item,
+            saleId: newSale.id,
+          }))
+        );
+
+        // Update product stock
+        for (const item of items) {
+          await tx
+            .update(products)
+            .set({
+              stock: sql`${products.stock} - ${item.quantity}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(products.id, item.productId));
+        }
+      }
+
+      return newSale;
+    });
+  }
+
+  async getSale(id: string): Promise<Sale | undefined> {
+    const [sale] = await db.select().from(sales).where(eq(sales.id, id));
+    return sale;
+  }
+
+  async getRecentSales(limit: number = 10): Promise<Sale[]> {
+    return await db
+      .select()
+      .from(sales)
+      .orderBy(desc(sales.createdAt))
+      .limit(limit);
+  }
+
+  async getSalesByCustomer(customerId: string): Promise<Sale[]> {
+    return await db
+      .select()
+      .from(sales)
+      .where(eq(sales.customerId, customerId))
+      .orderBy(desc(sales.createdAt));
+  }
+
+  async getSalesByPeriod(startDate: Date, endDate: Date): Promise<Sale[]> {
+    return await db
+      .select()
+      .from(sales)
+      .where(and(
+        gte(sales.createdAt, startDate),
+        lte(sales.createdAt, endDate)
+      ))
+      .orderBy(desc(sales.createdAt));
+  }
+
+  // Promo code operations
+  async getAllPromoCodes(): Promise<PromoCode[]> {
+    return await db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+  }
+
+  async getPromoCode(id: string): Promise<PromoCode | undefined> {
+    const [promoCode] = await db.select().from(promoCodes).where(eq(promoCodes.id, id));
+    return promoCode;
+  }
+
+  async getPromoCodeByCode(code: string): Promise<PromoCode | undefined> {
+    const [promoCode] = await db
+      .select()
+      .from(promoCodes)
+      .where(and(
+        eq(promoCodes.code, code),
+        eq(promoCodes.isActive, true)
+      ));
+    return promoCode;
+  }
+
+  async createPromoCode(promoCode: InsertPromoCode): Promise<PromoCode> {
+    const [newPromoCode] = await db.insert(promoCodes).values(promoCode).returning();
+    return newPromoCode;
+  }
+
+  async updatePromoCode(id: string, promoCode: Partial<InsertPromoCode>): Promise<PromoCode> {
+    const [updated] = await db
+      .update(promoCodes)
+      .set({ ...promoCode, updatedAt: new Date() })
+      .where(eq(promoCodes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePromoCode(id: string): Promise<void> {
+    await db.delete(promoCodes).where(eq(promoCodes.id, id));
+  }
+
+  // Dashboard & Reports
+  async getDashboardStats() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get today's sales
+    const todaySalesResult = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${sales.total} AS NUMERIC)), 0)`,
+        count: count(),
+      })
+      .from(sales)
+      .where(and(
+        gte(sales.createdAt, today),
+        lt(sales.createdAt, tomorrow)
+      ));
+
+    // Get low stock count
+    const lowStockResult = await db
+      .select({ count: count() })
+      .from(products)
+      .where(sql`${products.stock} <= ${products.lowStockThreshold}`);
+
+    // Get total customers
+    const customersResult = await db.select({ count: count() }).from(customers);
+
+    return {
+      todaySales: Number(todaySalesResult[0]?.total || 0),
+      todayTransactions: todaySalesResult[0]?.count || 0,
+      lowStockCount: lowStockResult[0]?.count || 0,
+      totalCustomers: customersResult[0]?.count || 0,
+    };
+  }
+
+  async getSalesReport(period: 'today' | 'week' | 'month') {
+    const now = new Date();
+    let startDate = new Date();
+
+    if (period === 'today') {
+      startDate.setHours(0, 0, 0, 0);
+    } else if (period === 'week') {
+      startDate.setDate(now.getDate() - 7);
+    } else {
+      startDate.setDate(now.getDate() - 30);
+    }
+
+    // Get sales summary
+    const salesSummary = await db
+      .select({
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${sales.total} AS NUMERIC)), 0)`,
+        count: count(),
+      })
+      .from(sales)
+      .where(gte(sales.createdAt, startDate));
+
+    // Get total items sold
+    const itemsSold = await db
+      .select({
+        total: sql<number>`COALESCE(SUM(${saleItems.quantity}), 0)`,
+      })
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(gte(sales.createdAt, startDate));
+
+    // Get top products
+    const topProductsData = await db
+      .select({
+        productId: saleItems.productId,
+        quantitySold: sql<number>`SUM(${saleItems.quantity})`,
+        revenue: sql<number>`SUM(CAST(${saleItems.totalPrice} AS NUMERIC))`,
+      })
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(gte(sales.createdAt, startDate))
+      .groupBy(saleItems.productId)
+      .orderBy(desc(sql`SUM(${saleItems.quantity})`))
+      .limit(5);
+
+    // Fetch product details for top products
+    const topProducts = await Promise.all(
+      topProductsData.map(async (item) => {
+        const product = await this.getProduct(item.productId);
+        return {
+          product: product!,
+          quantitySold: Number(item.quantitySold),
+          revenue: Number(item.revenue),
+        };
+      })
+    );
+
+    // Get sales by payment method
+    const paymentMethodData = await db
+      .select({
+        paymentMethod: sales.paymentMethod,
+        total: sql<number>`COALESCE(SUM(CAST(${sales.total} AS NUMERIC)), 0)`,
+      })
+      .from(sales)
+      .where(gte(sales.createdAt, startDate))
+      .groupBy(sales.paymentMethod);
+
+    const salesByPaymentMethod: Record<string, number> = {};
+    paymentMethodData.forEach((item) => {
+      salesByPaymentMethod[item.paymentMethod] = Number(item.total);
+    });
+
+    const totalRevenue = Number(salesSummary[0]?.totalRevenue || 0);
+    const totalTransactions = salesSummary[0]?.count || 0;
+    const totalSales = Number(itemsSold[0]?.total || 0);
+    const averageTicket = totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+
+    return {
+      totalSales,
+      totalRevenue,
+      totalTransactions,
+      averageTicket,
+      topProducts,
+      salesByPaymentMethod,
+    };
+  }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
