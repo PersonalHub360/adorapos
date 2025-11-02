@@ -530,12 +530,11 @@ export default function Products() {
             {/* Paper Size */}
             <div className="space-y-2">
               <Label>Paper Size *</Label>
-              <Select defaultValue="">
+              <Select>
                 <SelectTrigger data-testid="select-paper-size">
                   <SelectValue placeholder="Select paper size..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Select paper size...</SelectItem>
                   {paperSizes?.filter(size => size.isActive).map((size) => {
                     const widthInch = (size.widthMm / 25.4).toFixed(2);
                     const heightInch = (size.heightMm / 25.4).toFixed(2);
