@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
@@ -140,23 +140,26 @@ export default function PrintBarcode() {
 
   useEffect(() => {
     if (showPreview) {
-      selectedProducts.forEach((item) => {
-        for (let i = 0; i < item.quantity; i++) {
-          const canvas = document.getElementById(`barcode-${item.product.id}-${i}`) as HTMLCanvasElement;
-          if (canvas && item.product.sku) {
-            try {
-              JsBarcode(canvas, item.product.sku, {
-                format: getBarcodeFormat(item.product.barcodeSymbology),
-                width: 2,
-                height: 60,
-                displayValue: false,
-              });
-            } catch (error) {
-              console.error("Error generating barcode:", error);
+      // Use setTimeout to ensure canvas elements are in the DOM
+      setTimeout(() => {
+        selectedProducts.forEach((item) => {
+          for (let i = 0; i < item.quantity; i++) {
+            const canvas = document.getElementById(`barcode-${item.product.id}-${i}`) as HTMLCanvasElement;
+            if (canvas && item.product.sku) {
+              try {
+                JsBarcode(canvas, item.product.sku, {
+                  format: getBarcodeFormat(item.product.barcodeSymbology),
+                  width: 2,
+                  height: 60,
+                  displayValue: false,
+                });
+              } catch (error) {
+                console.error("Error generating barcode:", error);
+              }
             }
           }
-        }
-      });
+        });
+      }, 100);
     }
   }, [showPreview, selectedProducts]);
 
@@ -397,6 +400,9 @@ export default function PrintBarcode() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Barcode Preview</DialogTitle>
+            <DialogDescription>
+              Review and print barcode labels
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
