@@ -32,6 +32,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
+import { MockStorage } from "./mockStorage";
 
 export interface IStorage {
   // User operations (local auth)
@@ -640,4 +641,7 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// Use mock storage in development mode without database, otherwise use real database storage
+export const storage = process.env.NODE_ENV === 'development' && !process.env.DATABASE_URL 
+  ? new MockStorage() 
+  : new DatabaseStorage();

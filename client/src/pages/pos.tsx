@@ -137,6 +137,7 @@ export default function POS() {
             <Input
               type="date"
               value={selectedDate}
+              readOnly
               className="w-48"
               data-testid="input-date"
             />
