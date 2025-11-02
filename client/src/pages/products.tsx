@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Search, Edit, Trash2, Filter, Eye, Barcode, Upload, Download, FileText, Printer } from "lucide-react";
+import { Link } from "wouter";
+import { Search, Edit, Trash2, Filter, Eye, Barcode, Upload, Download, FileText, Printer, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
+import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -193,8 +195,8 @@ export default function Products() {
       const vErrors: { row: number; sku: string; error: string }[] = [];
 
       // Generate unique product codes for all rows
-      const codesResponse = await apiRequest("POST", "/api/products/generate-codes", { count: rows.length });
-      const generatedCodes = codesResponse.codes as string[];
+      const codesResponse = await apiRequest("POST", "/api/products/generate-codes", { count: rows.length }) as unknown as { codes: string[] };
+      const generatedCodes = codesResponse.codes;
       
       // Validate each row
       for (let i = 0; i < rows.length; i++) {
@@ -615,10 +617,12 @@ export default function Products() {
                 : "Get started by adding your first product"}
             </p>
             {isAdmin && !searchQuery && categoryFilter === "all" && (
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Product
-              </Button>
+              <Link href="/add-product">
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
+              </Link>
             )}
           </div>
         </Card>
