@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Trash2, Calendar, User, Plus, Minus } from "lucide-react";
+import { Search, Trash2, Calendar, User, Plus, Minus, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -37,6 +37,9 @@ export default function POS() {
   const [discount, setDiscount] = useState(0);
   const [shipping, setShipping] = useState(0);
   const [tax, setTax] = useState(0);
+  const [scanMode, setScanMode] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -45,6 +48,34 @@ export default function POS() {
   const { data: customers } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
   });
+
+  // Auto-focus search input when scan mode is active
+  useEffect(() => {
+    if (scanMode && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [scanMode]);
+
+  // Auto-submit after scanning (simulates barcode scanner behavior)
+  useEffect(() => {
+    if (scanMode && searchCode.length > 0) {
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+      }
+      
+      // Auto-submit after 100ms of no input (simulates barcode scan complete)
+      scanTimeoutRef.current = setTimeout(() => {
+        handleSearchProduct();
+        setScanMode(false);
+      }, 100);
+    }
+    
+    return () => {
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
+      }
+    };
+  }, [searchCode, scanMode]);
 
   const handleSearchProduct = () => {
     if (!searchCode.trim()) return;
@@ -62,6 +93,14 @@ export default function POS() {
         setCart([...cart, { product, quantity: 1 }]);
       }
       setSearchCode("");
+    }
+  };
+
+  const handleScanClick = () => {
+    setScanMode(true);
+    setSearchCode("");
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
     }
   };
 
@@ -132,13 +171,22 @@ export default function POS() {
               <Search className="h-5 w-5 text-primary" />
             </div>
             <Input
-              placeholder="Scan/Search product by name/code"
+              ref={searchInputRef}
+              placeholder={scanMode ? "Scanning... Point scanner at barcode" : "Scan/Search product by name/code"}
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchProduct()}
-              className="flex-1"
+              onKeyDown={(e) => e.key === 'Enter' && !scanMode && handleSearchProduct()}
+              className={`flex-1 ${scanMode ? 'ring-2 ring-primary' : ''}`}
               data-testid="input-search-product"
             />
+            <Button 
+              variant={scanMode ? "default" : "outline"}
+              onClick={handleScanClick}
+              data-testid="button-scan"
+            >
+              <Scan className="h-4 w-4 mr-2" />
+              {scanMode ? "Scanning..." : "Scan"}
+            </Button>
             <Button onClick={handleSearchProduct} data-testid="button-add-product">
               Add
             </Button>
