@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Edit, Trash2, Filter } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Filter, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
@@ -189,71 +197,117 @@ export default function Products() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <Skeleton key={i} className="h-64" />
-          ))}
-        </div>
+        <Card>
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-16" />
+            ))}
+          </div>
+        </Card>
       ) : filteredProducts && filteredProducts.length > 0 ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filteredProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden" data-testid={`card-product-${product.id}`}>
-              <div className="aspect-square bg-muted flex items-center justify-center">
-                <div className="text-6xl text-muted-foreground/20">
-                  {product.category[0]}
-                </div>
-              </div>
-              <CardContent className="p-4 space-y-3">
-                <div>
-                  <h3 className="font-semibold text-lg line-clamp-1" data-testid={`text-product-name-${product.id}`}>
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {product.category} • {product.size} • {product.color}
-                  </p>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold tabular-nums" data-testid={`text-product-price-${product.id}`}>
-                    ${parseFloat(product.price).toFixed(2)}
-                  </span>
-                  <Badge
-                    variant={getStockBadgeVariant(product.stock, product.lowStockThreshold)}
-                    data-testid={`badge-stock-${product.id}`}
-                  >
-                    {product.stock} {getStockStatus(product.stock, product.lowStockThreshold)}
-                  </Badge>
-                </div>
-                {product.sku && (
-                  <p className="text-xs text-muted-foreground">SKU: {product.sku}</p>
-                )}
-                {isAdmin && (
-                  <div className="flex gap-2 pt-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setEditingProduct(product)}
-                      data-testid={`button-edit-${product.id}`}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setDeletingProduct(product)}
-                      data-testid={`button-delete-${product.id}`}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">#</TableHead>
+                <TableHead className="w-20">Image</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Brand</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Quantity</TableHead>
+                <TableHead>Unit</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Stock Worth</TableHead>
+                <TableHead className="text-center">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredProducts.map((product, index) => {
+                const price = parseFloat(product.price);
+                const cost = price * 0.65; // Assuming 65% cost ratio
+                const stockWorth = price * product.stock;
+                
+                return (
+                  <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
+                    <TableCell className="font-medium text-muted-foreground">
+                      {index}
+                    </TableCell>
+                    <TableCell>
+                      <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                        <span className="text-2xl text-muted-foreground/30">
+                          {product.name[0]}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium" data-testid={`text-product-name-${product.id}`}>
+                      {product.name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {product.sku || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {product.size || '-'}
+                    </TableCell>
+                    <TableCell>
+                      {product.category}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums" data-testid={`text-stock-${product.id}`}>
+                      {product.stock}
+                    </TableCell>
+                    <TableCell>
+                      Piece
+                    </TableCell>
+                    <TableCell className="text-right font-medium tabular-nums" data-testid={`text-product-price-${product.id}`}>
+                      ${price.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      ${cost.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold tabular-nums">
+                      ${stockWorth.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600"
+                          data-testid={`button-view-${product.id}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600"
+                              onClick={() => setEditingProduct(product)}
+                              data-testid={`button-edit-${product.id}`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 bg-red-500/10 hover:bg-red-500/20 text-red-600"
+                              onClick={() => setDeletingProduct(product)}
+                              data-testid={`button-delete-${product.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
       ) : (
         <Card className="p-12">
           <div className="flex flex-col items-center justify-center text-center">
