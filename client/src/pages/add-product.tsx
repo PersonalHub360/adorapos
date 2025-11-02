@@ -1,10 +1,15 @@
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ProductForm } from "@/components/products/ProductForm";
 
 export default function AddProduct() {
   const [, setLocation] = useLocation();
+
+  const handleSuccess = () => {
+    setLocation("/products");
+  };
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
@@ -15,24 +20,18 @@ export default function AddProduct() {
         data-testid="button-back"
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Products
+        Back to Product List
       </Button>
 
       <Card>
         <CardHeader>
           <CardTitle>Add New Product</CardTitle>
+          <CardDescription>
+            Add a new product to your inventory
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <p>Please go to the Product List page and click the "Add Product" button to add a new product.</p>
-            <Button
-              onClick={() => setLocation("/products")}
-              className="mt-4"
-              data-testid="button-go-to-products"
-            >
-              Go to Product List
-            </Button>
-          </div>
+          <ProductForm onSuccess={handleSuccess} showHeader={false} />
         </CardContent>
       </Card>
     </div>
