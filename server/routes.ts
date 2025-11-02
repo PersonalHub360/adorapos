@@ -95,6 +95,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate unique product codes (5-digit: 10000-99999)
+  app.post("/api/products/generate-codes", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { count = 1 } = req.body;
+      const products = await storage.getAllProducts();
+      const existingCodes = new Set(products.map(p => p.sku).filter(Boolean));
+      
+      const generatedCodes: string[] = [];
+      const maxAttempts = count * 100;
+      let attempts = 0;
+      
+      while (generatedCodes.length < count && attempts < maxAttempts) {
+        const code = Math.floor(10000 + Math.random() * 90000).toString();
+        if (!existingCodes.has(code) && !generatedCodes.includes(code)) {
+          generatedCodes.push(code);
+          existingCodes.add(code);
+        }
+        attempts++;
+      }
+      
+      if (generatedCodes.length < count) {
+        return res.status(500).json({ 
+          message: "Unable to generate enough unique codes", 
+          generated: generatedCodes.length,
+          requested: count
+        });
+      }
+      
+      res.json({ codes: generatedCodes });
+    } catch (error) {
+      console.error("Error generating product codes:", error);
+      res.status(500).json({ message: "Failed to generate product codes" });
+    }
+  });
+
   // Customer routes
   app.get("/api/customers", isAuthenticated, async (req, res) => {
     try {
