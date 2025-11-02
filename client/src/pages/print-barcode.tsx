@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2, Printer } from "lucide-react";
+import { Plus, Trash2, Printer, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import type { Product, PaperSize } from "@shared/schema";
 
@@ -23,6 +25,8 @@ export default function PrintBarcode() {
   });
   const [selectedPaperSize, setSelectedPaperSize] = useState<string>("");
   const [showPreview, setShowPreview] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -31,6 +35,38 @@ export default function PrintBarcode() {
   const { data: paperSizes } = useQuery<PaperSize[]>({
     queryKey: ["/api/paper-sizes"],
   });
+
+  const filteredProducts = products?.filter((product) => {
+    if (!productCode.trim()) return true;
+    const searchTerm = productCode.toLowerCase();
+    return (
+      product.name.toLowerCase().includes(searchTerm) ||
+      product.sku?.toLowerCase().includes(searchTerm) ||
+      product.category.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  const handleSelectProduct = (product: Product) => {
+    const existing = selectedProducts.find((item) => item.product.id === product.id);
+    if (existing) {
+      setSelectedProducts(
+        selectedProducts.map((item) =>
+          item.product.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        )
+      );
+    } else {
+      setSelectedProducts([...selectedProducts, { product, quantity: 1 }]);
+    }
+
+    setProductCode("");
+    setDropdownOpen(false);
+    toast({
+      title: "Product added",
+      description: `${product.name} added to barcode print list`,
+    });
+  };
 
   const handleAddProduct = () => {
     if (!productCode.trim()) {
@@ -55,24 +91,7 @@ export default function PrintBarcode() {
       return;
     }
 
-    const existing = selectedProducts.find((item) => item.product.id === product.id);
-    if (existing) {
-      setSelectedProducts(
-        selectedProducts.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      );
-    } else {
-      setSelectedProducts([...selectedProducts, { product, quantity: 1 }]);
-    }
-
-    setProductCode("");
-    toast({
-      title: "Product added",
-      description: `${product.name} added to barcode print list`,
-    });
+    handleSelectProduct(product);
   };
 
   const handleRemoveProduct = (productId: string) => {
@@ -139,19 +158,87 @@ export default function PrintBarcode() {
               >
                 <Plus className="h-4 w-4" />
               </Button>
-              <Input
-                id="productCode"
-                value={productCode}
-                onChange={(e) => setProductCode(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddProduct();
-                  }
-                }}
-                placeholder="Please type product code and select..."
-                data-testid="input-product-code"
-              />
+              <Popover open={dropdownOpen} onOpenChange={setDropdownOpen}>
+                <PopoverTrigger asChild>
+                  <div className="flex-1 relative">
+                    <Input
+                      ref={inputRef}
+                      id="productCode"
+                      value={productCode}
+                      onChange={(e) => {
+                        setProductCode(e.target.value);
+                        setDropdownOpen(true);
+                      }}
+                      onFocus={() => setDropdownOpen(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddProduct();
+                        }
+                        if (e.key === "Escape") {
+                          setDropdownOpen(false);
+                        }
+                      }}
+                      placeholder="Please type product code and select..."
+                      data-testid="input-product-code"
+                    />
+                  </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-[600px] p-0" align="start">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Search products..." 
+                      value={productCode}
+                      onValueChange={setProductCode}
+                    />
+                    <CommandList>
+                      <CommandEmpty>No products found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredProducts?.slice(0, 10).map((product) => {
+                          const isSelected = selectedProducts.some(
+                            (item) => item.product.id === product.id
+                          );
+                          return (
+                            <CommandItem
+                              key={product.id}
+                              value={product.id}
+                              onSelect={() => handleSelectProduct(product)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-3">
+                                  {product.imageUrl ? (
+                                    <img
+                                      src={product.imageUrl}
+                                      alt={product.name}
+                                      className="w-10 h-10 rounded object-cover"
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                                      <span className="text-sm text-muted-foreground">
+                                        {product.name[0]}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <div className="font-medium">{product.name}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                      Code: {product.sku} • {product.category} • ${product.price}
+                                    </div>
+                                  </div>
+                                </div>
+                                {isSelected && (
+                                  <Check className="h-4 w-4 text-primary" />
+                                )}
+                              </div>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
