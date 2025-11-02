@@ -192,6 +192,24 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // Handle customer loyalty points
+      if (newSale.customerId) {
+        const pointsUsed = newSale.pointsUsed || 0;
+        const pointsEarned = newSale.pointsEarned || 0;
+        
+        // Update customer points: subtract used points, add earned points
+        const pointsChange = pointsEarned - pointsUsed;
+        if (pointsChange !== 0) {
+          await tx
+            .update(customers)
+            .set({
+              points: sql`${customers.points} + ${pointsChange}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(customers.id, newSale.customerId));
+        }
+      }
+
       return newSale;
     });
   }
@@ -260,6 +278,24 @@ export class DatabaseStorage implements IStorage {
               updatedAt: new Date(),
             })
             .where(eq(products.id, item.productId));
+        }
+      }
+
+      // Reverse customer loyalty points transaction
+      if (sale.customerId) {
+        const pointsUsed = sale.pointsUsed || 0;
+        const pointsEarned = sale.pointsEarned || 0;
+        
+        // Reverse: give back used points, take back earned points
+        const pointsChange = pointsUsed - pointsEarned;
+        if (pointsChange !== 0) {
+          await tx
+            .update(customers)
+            .set({
+              points: sql`${customers.points} + ${pointsChange}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(customers.id, sale.customerId));
         }
       }
 

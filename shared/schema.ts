@@ -71,6 +71,7 @@ export const customers = pgTable("customers", {
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
+  points: integer("points").notNull().default(0), // Loyalty points
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -112,6 +113,8 @@ export const sales = pgTable("sales", {
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).notNull().default('0'),
   promoCodeId: varchar("promo_code_id").references(() => promoCodes.id),
+  pointsUsed: integer("points_used").notNull().default(0), // Loyalty points used for discount
+  pointsEarned: integer("points_earned").notNull().default(0), // Loyalty points earned from this sale
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // cash, card, digital_wallet
   status: varchar("status", { length: 20 }).notNull().default('completed'), // completed, refunded
