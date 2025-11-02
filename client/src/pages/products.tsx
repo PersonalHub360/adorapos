@@ -749,9 +749,7 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
   };
 
   const generateSKU = () => {
-    const timestamp = Date.now().toString(36);
-    const random = Math.random().toString(36).substring(2, 7);
-    const sku = `${timestamp}${random}`.toUpperCase();
+    const sku = Math.floor(10000 + Math.random() * 90000).toString();
     setFormData({ ...formData, sku });
   };
 
@@ -802,9 +800,17 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
             <div className="flex gap-2">
               <Input
                 id="sku"
+                type="number"
                 value={formData.sku || ""}
-                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                placeholder="Auto-generated or enter manually"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "" || (value.length <= 5 && /^\d+$/.test(value))) {
+                    setFormData({ ...formData, sku: value });
+                  }
+                }}
+                placeholder="5-digit number"
+                maxLength={5}
+                pattern="\d{5}"
                 data-testid="input-product-sku"
               />
               <Button
@@ -812,7 +818,7 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
                 variant="outline"
                 size="icon"
                 onClick={generateSKU}
-                title="Generate SKU"
+                title="Generate Code"
                 data-testid="button-generate-sku"
               >
                 <RefreshCw className="h-4 w-4" />
