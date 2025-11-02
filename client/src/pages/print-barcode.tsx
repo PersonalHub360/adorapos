@@ -337,7 +337,7 @@ export default function PrintBarcode() {
                   id="productName"
                   checked={printOptions.productName}
                   onCheckedChange={(checked) =>
-                    setPrintOptions({ ...printOptions, productName: checked as boolean })
+                    setPrintOptions({ ...printOptions, productName: checked === true })
                   }
                   data-testid="checkbox-product-name"
                 />
@@ -350,7 +350,7 @@ export default function PrintBarcode() {
                   id="price"
                   checked={printOptions.price}
                   onCheckedChange={(checked) =>
-                    setPrintOptions({ ...printOptions, price: checked as boolean })
+                    setPrintOptions({ ...printOptions, price: checked === true })
                   }
                   data-testid="checkbox-price"
                 />
@@ -363,7 +363,7 @@ export default function PrintBarcode() {
                   id="promoPrice"
                   checked={printOptions.promoPrice}
                   onCheckedChange={(checked) =>
-                    setPrintOptions({ ...printOptions, promoPrice: checked as boolean })
+                    setPrintOptions({ ...printOptions, promoPrice: checked === true })
                   }
                   data-testid="checkbox-promo-price"
                 />
