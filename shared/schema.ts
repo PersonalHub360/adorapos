@@ -56,7 +56,7 @@ export const products = pgTable("products", {
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   sku: varchar("sku", { length: 100 }).unique(),
   description: text("description"),
-  imageUrl: varchar("image_url", { length: 500 }),
+  imageUrl: text("image_url"),
   barcodeSymbology: varchar("barcode_symbology", { length: 50 }).default('Code128'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
