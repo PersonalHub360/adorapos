@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Search, Edit, Trash2, Filter, Eye, Barcode } from "lucide-react";
+import { Search, Edit, Trash2, Filter, Eye, Barcode, Upload, Download, FileText, Printer } from "lucide-react";
+import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,7 +43,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Product, PaperSize } from "@shared/schema";
+import type { Product, PaperSize, InsertProduct } from "@shared/schema";
+import { insertProductSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { ProductForm } from "@/components/products/ProductForm";
@@ -56,6 +58,11 @@ export default function Products() {
   const [colorFilter, setColorFilter] = useState<string>("all");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<{ row: number; sku: string; error: string }[]>([]);
+  const [saveErrors, setSaveErrors] = useState<{ row: number; sku: string; error: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [barcodePrintDialogOpen, setBarcodePrintDialogOpen] = useState(false);
   const [selectedBarcodeProducts, setSelectedBarcodeProducts] = useState<Array<{product: Product, quantity: number}>>([]);
   const [barcodeSearchQuery, setBarcodeSearchQuery] = useState("");
@@ -137,12 +144,318 @@ export default function Products() {
     return "In Stock";
   };
 
+  const downloadSampleCSV = () => {
+    const sampleData = [
+      {
+        name: "Example T-Shirt",
+        sku: "12345",
+        category: "Shirts",
+        size: "M",
+        color: "Blue",
+        purchasePrice: "10.00",
+        price: "25.00",
+        taxRate: "10",
+        stock: "100",
+        lowStockThreshold: "10",
+        description: "A comfortable cotton t-shirt",
+        barcodeSymbology: "Code128"
+      }
+    ];
+    
+    const csv = Papa.unparse(sampleData);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "products_sample.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Sample downloaded",
+      description: "Sample CSV file has been downloaded",
+    });
+  };
+
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setValidationErrors([]);
+    setSaveErrors([]);
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const rows = results.data as any[];
+          
+          // Track original row indices and SKUs for accurate error reporting
+          type ProductWithRow = { product: InsertProduct; originalRow: number; sku: string };
+          const validProducts: ProductWithRow[] = [];
+          const vErrors: { row: number; sku: string; error: string }[] = [];
+
+          // Get existing SKUs from database
+          const existingSKUs = new Set(products?.map(p => p.sku).filter(Boolean) || []);
+
+          // Preprocess: collect all SKUs from CSV to detect file-level duplicates
+          const csvSKUs = new Map<string, number>(); // SKU -> first row number (0-indexed)
+          for (let i = 0; i < rows.length; i++) {
+            const sku = rows[i].sku;
+            if (sku) {
+              if (!csvSKUs.has(sku)) {
+                csvSKUs.set(sku, i); // Store 0-based index
+              }
+            }
+          }
+
+          // Validate each row
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowNum = i + 2; // +2 because: +1 for array index, +1 for header row
+            
+            try {
+              // Check for duplicate SKU in database
+              if (row.sku && existingSKUs.has(row.sku)) {
+                vErrors.push({ row: rowNum, sku: row.sku, error: "SKU already exists in database" });
+                continue;
+              }
+
+              // Check for duplicate SKU in file (skip if this is the first occurrence)
+              if (row.sku && csvSKUs.get(row.sku) !== i) {
+                const firstRow = csvSKUs.get(row.sku)! + 2; // Convert to display row number
+                vErrors.push({ row: rowNum, sku: row.sku, error: `Duplicate SKU in file (first at row ${firstRow})` });
+                continue;
+              }
+
+              // Validate against schema
+              const validated = insertProductSchema.parse({
+                name: row.name,
+                sku: row.sku,
+                category: row.category,
+                size: row.size || null,
+                color: row.color || null,
+                purchasePrice: row.purchasePrice || "0",
+                price: row.price,
+                taxRate: row.taxRate || "0",
+                stock: row.stock || 0,
+                lowStockThreshold: row.lowStockThreshold || 5,
+                description: row.description || null,
+                imageUrl: "",
+                barcodeSymbology: row.barcodeSymbology || "Code128",
+              });
+              
+              validProducts.push({
+                product: validated,
+                originalRow: rowNum,
+                sku: row.sku || "N/A"
+              });
+            } catch (error: any) {
+              const message = error.errors?.[0]?.message || error.message || "Invalid data";
+              vErrors.push({ row: rowNum, sku: row.sku || "N/A", error: message });
+            }
+          }
+
+          // Store validation errors
+          setValidationErrors(vErrors);
+
+          // Show validation errors if all rows failed
+          if (vErrors.length > 0 && validProducts.length === 0) {
+            toast({
+              title: "Validation failed",
+              description: `All ${vErrors.length} rows have errors. See details below.`,
+              variant: "destructive",
+            });
+            setImporting(false);
+            return;
+          }
+
+          // Import valid products with accurate row tracking
+          let successCount = 0;
+          const sErrors: { row: number; sku: string; error: string }[] = [];
+
+          for (const { product, originalRow, sku } of validProducts) {
+            try {
+              await apiRequest("POST", "/api/products", product);
+              successCount++;
+            } catch (error: any) {
+              const message = error.message || "Failed to save";
+              sErrors.push({ 
+                row: originalRow, 
+                sku: sku, 
+                error: message 
+              });
+            }
+          }
+
+          // Store save errors separately
+          setSaveErrors(sErrors);
+
+          queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+
+          // Show detailed results
+          const messages = [];
+          if (successCount > 0) messages.push(`${successCount} products imported`);
+          if (sErrors.length > 0) messages.push(`${sErrors.length} failed to save`);
+          if (vErrors.length > 0) messages.push(`${vErrors.length} validation errors`);
+
+          toast({
+            title: successCount > 0 ? "Import completed" : "Import failed",
+            description: messages.join(". ") + (vErrors.length + sErrors.length > 0 ? " See details below." : ""),
+            variant: successCount > 0 ? "default" : "destructive",
+          });
+
+          if (successCount > 0 && vErrors.length === 0 && sErrors.length === 0) {
+            setImportDialogOpen(false);
+            setValidationErrors([]);
+            setSaveErrors([]);
+          }
+        } catch (error) {
+          toast({
+            title: "Import failed",
+            description: "An unexpected error occurred during import.",
+            variant: "destructive",
+          });
+        } finally {
+          setImporting(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+          }
+        }
+      },
+      error: (error) => {
+        setImporting(false);
+        toast({
+          title: "Parse error",
+          description: `Failed to parse CSV file: ${error.message || "Unknown error"}`,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
+  const exportToCSV = () => {
+    if (!filteredProducts || filteredProducts.length === 0) {
+      toast({
+        title: "No data",
+        description: "No products to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const csvData = filteredProducts.map((p) => ({
+      name: p.name,
+      sku: p.sku,
+      category: p.category,
+      size: p.size || "",
+      color: p.color || "",
+      purchasePrice: p.purchasePrice,
+      price: p.price,
+      taxRate: p.taxRate || "0",
+      stock: p.stock,
+      lowStockThreshold: p.lowStockThreshold,
+      description: p.description || "",
+      barcodeSymbology: p.barcodeSymbology || "Code128",
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `products_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export successful",
+      description: `${filteredProducts.length} products exported to CSV`,
+    });
+  };
+
+  const exportToPDF = async () => {
+    if (!filteredProducts || filteredProducts.length === 0) {
+      toast({
+        title: "No data",
+        description: "No products to export",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { jsPDF } = await import("jspdf");
+    const autoTable = (await import("jspdf-autotable")).default;
+
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text("Products List", 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [["#", "Name", "Code", "Category", "Size", "Stock", "Purchase", "Sales", "Tax%"]],
+      body: filteredProducts.map((p, index) => [
+        index + 1,
+        p.name,
+        p.sku || "",
+        p.category,
+        p.size || "",
+        p.stock,
+        `$${p.purchasePrice}`,
+        `$${p.price}`,
+        p.taxRate || "0",
+      ]),
+      theme: "grid",
+      headStyles: { fillColor: [41, 128, 185] },
+      styles: { fontSize: 8 },
+    });
+
+    doc.save(`products_${new Date().toISOString().split("T")[0]}.pdf`);
+
+    toast({
+      title: "PDF generated",
+      description: `${filteredProducts.length} products exported to PDF`,
+    });
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" data-testid="text-products-title">Products List</h1>
           <p className="text-muted-foreground mt-1">Manage your clothing inventory</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} data-testid="button-import">
+            <Upload className="h-4 w-4 mr-2" />
+            Import
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToCSV} data-testid="button-export-csv">
+            <Download className="h-4 w-4 mr-2" />
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportToPDF} data-testid="button-export-pdf">
+            <FileText className="h-4 w-4 mr-2" />
+            PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
         </div>
       </div>
 
@@ -203,8 +516,9 @@ export default function Products() {
         </Card>
       ) : filteredProducts && filteredProducts.length > 0 ? (
         <Card>
-          <Table>
-            <TableHeader>
+          <div className="max-h-[600px] overflow-auto relative">
+            <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background">
               <TableRow>
                 <TableHead className="w-12">#</TableHead>
                 <TableHead className="w-20">Image</TableHead>
@@ -325,6 +639,7 @@ export default function Products() {
               })}
             </TableBody>
           </Table>
+          </div>
         </Card>
       ) : (
         <Card className="p-12">
@@ -385,6 +700,99 @@ export default function Products() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import Products</DialogTitle>
+            <DialogDescription>
+              Upload a CSV file to import multiple products at once
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="hidden"
+                id="csv-file-input"
+                disabled={importing}
+              />
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <Button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                data-testid="button-choose-csv"
+              >
+                {importing ? "Importing..." : "Choose CSV File"}
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                Supported format: CSV
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Need a template?
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadSampleCSV}
+                data-testid="button-download-sample"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Sample CSV
+              </Button>
+            </div>
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">CSV Format</h4>
+              <p className="text-sm text-muted-foreground">
+                Your CSV file should include these columns: name, sku, category, size, color, 
+                purchasePrice, price, taxRate, stock, lowStockThreshold, description, barcodeSymbology
+              </p>
+            </div>
+            {(validationErrors.length > 0 || saveErrors.length > 0) && (
+              <div className="space-y-3">
+                {validationErrors.length > 0 && (
+                  <div className="border border-destructive/50 rounded-lg p-4">
+                    <h4 className="font-medium text-destructive mb-2">
+                      Validation Errors ({validationErrors.length})
+                    </h4>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {validationErrors.map((err, idx) => (
+                        <div key={idx} className="text-sm bg-destructive/10 p-2 rounded">
+                          <span className="font-medium">Row {err.row}</span>
+                          {err.sku && err.sku !== "N/A" && <span className="text-muted-foreground"> (SKU: {err.sku})</span>}
+                          <span className="block text-destructive">{err.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {saveErrors.length > 0 && (
+                  <div className="border border-orange-500/50 rounded-lg p-4">
+                    <h4 className="font-medium text-orange-600 dark:text-orange-400 mb-2">
+                      Save Errors ({saveErrors.length})
+                    </h4>
+                    <div className="max-h-48 overflow-y-auto space-y-2">
+                      {saveErrors.map((err, idx) => (
+                        <div key={idx} className="text-sm bg-orange-100 dark:bg-orange-900/20 p-2 rounded">
+                          <span className="font-medium">Row {err.row}</span>
+                          {err.sku && err.sku !== "N/A" && <span className="text-muted-foreground"> (SKU: {err.sku})</span>}
+                          <span className="block text-orange-600 dark:text-orange-400">{err.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Barcode Print Dialog */}
       <Dialog open={barcodePrintDialogOpen} onOpenChange={setBarcodePrintDialogOpen}>
