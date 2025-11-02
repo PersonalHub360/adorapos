@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Edit, Trash2, Filter, Eye, Barcode, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Filter, Eye, Barcode, X, RefreshCw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -250,9 +250,17 @@ export default function Products() {
                     </TableCell>
                     <TableCell>
                       <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
-                        <span className="text-2xl text-muted-foreground/30">
-                          {product.name[0]}
-                        </span>
+                        {product.imageUrl ? (
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-2xl text-muted-foreground/30">
+                            {product.name[0]}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium" data-testid={`text-product-name-${product.id}`}>
@@ -692,7 +700,10 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
     lowStockThreshold: product?.lowStockThreshold || 5,
     sku: product?.sku || "",
     description: product?.description || "",
+    imageUrl: product?.imageUrl || "",
+    barcodeSymbology: product?.barcodeSymbology || "Code128",
   });
+  const [imagePreview, setImagePreview] = useState<string>(product?.imageUrl || "");
 
   const mutation = useMutation({
     mutationFn: async (data: InsertProduct) => {
@@ -737,6 +748,35 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
     mutation.mutate(formData);
   };
 
+  const generateSKU = () => {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substring(2, 7);
+    const sku = `${timestamp}${random}`.toUpperCase();
+    setFormData({ ...formData, sku });
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        setFormData({ ...formData, imageUrl: base64String });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <>
       <DialogHeader>
@@ -758,6 +798,101 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
             />
           </div>
           <div className="space-y-2">
+            <Label htmlFor="sku">Product Code *</Label>
+            <div className="flex gap-2">
+              <Input
+                id="sku"
+                value={formData.sku || ""}
+                onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+                placeholder="Auto-generated or enter manually"
+                data-testid="input-product-sku"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={generateSKU}
+                title="Generate SKU"
+                data-testid="button-generate-sku"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Product Image</Label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
+                  data-testid="input-product-image"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('image-upload')?.click()}
+                  className="w-full"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File
+                </Button>
+              </div>
+              {imagePreview && (
+                <div className="relative w-full h-32 border rounded-md overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="Product preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-6 w-6"
+                    onClick={() => {
+                      setImagePreview("");
+                      setFormData({ ...formData, imageUrl: "" });
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              {!imagePreview && (
+                <div className="text-xs text-muted-foreground">No file chosen</div>
+              )}
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="barcodeSymbology">Barcode Symbology *</Label>
+            <Select 
+              value={formData.barcodeSymbology || "Code128"} 
+              onValueChange={(v) => setFormData({ ...formData, barcodeSymbology: v })}
+            >
+              <SelectTrigger data-testid="select-barcode-symbology">
+                <SelectValue placeholder="Select symbology" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Code128">Code 128</SelectItem>
+                <SelectItem value="Code39">Code 39</SelectItem>
+                <SelectItem value="EAN13">EAN-13</SelectItem>
+                <SelectItem value="UPCA">UPC-A</SelectItem>
+                <SelectItem value="QRCode">QR Code</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
             <Label htmlFor="category">Category *</Label>
             <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
               <SelectTrigger data-testid="select-product-category">
@@ -770,9 +905,18 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="color">Color</Label>
+            <Input
+              id="color"
+              value={formData.color || ""}
+              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+              data-testid="input-product-color"
+            />
+          </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="size">Size</Label>
             <Select value={formData.size || ""} onValueChange={(v) => setFormData({ ...formData, size: v })}>
@@ -787,27 +931,6 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="color">Color</Label>
-            <Input
-              id="color"
-              value={formData.color || ""}
-              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
-              data-testid="input-product-color"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="sku">SKU</Label>
-            <Input
-              id="sku"
-              value={formData.sku || ""}
-              onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-              data-testid="input-product-sku"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="space-y-2">
             <Label htmlFor="price">Price *</Label>
             <Input
               id="price"
@@ -820,6 +943,9 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
               data-testid="input-product-price"
             />
           </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="stock">Stock Quantity *</Label>
             <Input
