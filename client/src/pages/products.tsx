@@ -45,6 +45,8 @@ const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
 export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sizeFilter, setSizeFilter] = useState<string>("all");
+  const [colorFilter, setColorFilter] = useState<string>("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
@@ -55,12 +57,18 @@ export default function Products() {
     queryKey: ["/api/products"],
   });
 
+  // Get unique sizes and colors from products
+  const availableSizes = Array.from(new Set(products?.map(p => p.size).filter(Boolean))) as string[];
+  const availableColors = Array.from(new Set(products?.map(p => p.color).filter(Boolean))) as string[];
+
   const filteredProducts = products?.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.sku?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesSize = sizeFilter === "all" || product.size === sizeFilter;
+    const matchesColor = colorFilter === "all" || product.color?.toLowerCase() === colorFilter.toLowerCase();
+    return matchesSearch && matchesCategory && matchesSize && matchesColor;
   });
 
   const deleteMutation = useMutation({
@@ -153,6 +161,28 @@ export default function Products() {
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={sizeFilter} onValueChange={setSizeFilter}>
+          <SelectTrigger className="w-[150px]" data-testid="select-size-filter">
+            <SelectValue placeholder="Size" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sizes</SelectItem>
+            {availableSizes.map((size) => (
+              <SelectItem key={size} value={size}>{size}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={colorFilter} onValueChange={setColorFilter}>
+          <SelectTrigger className="w-[150px]" data-testid="select-color-filter">
+            <SelectValue placeholder="Color" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Colors</SelectItem>
+            {availableColors.map((color) => (
+              <SelectItem key={color} value={color}>{color}</SelectItem>
             ))}
           </SelectContent>
         </Select>
