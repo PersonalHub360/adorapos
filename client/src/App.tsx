@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
+import POS from "@/pages/pos";
 import Products from "@/pages/products";
 import Customers from "@/pages/customers";
 import Sales from "@/pages/sales";
@@ -60,6 +61,7 @@ function Router() {
               {isAdmin ? (
                 <>
                   <Route path="/" component={Dashboard} />
+                  <Route path="/pos" component={POS} />
                   <Route path="/products" component={Products} />
                   <Route path="/customers" component={Customers} />
                   <Route path="/sales" component={Sales} />
@@ -68,7 +70,7 @@ function Router() {
                 </>
               ) : (
                 <>
-                  <Route path="/" component={Sales} />
+                  <Route path="/" component={POS} />
                   <Route path="/customers" component={Customers} />
                   <Route path="/products" component={Products} />
                 </>

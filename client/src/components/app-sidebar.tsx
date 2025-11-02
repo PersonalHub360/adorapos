@@ -62,6 +62,11 @@ export function AppSidebar() {
       icon: LayoutDashboard,
     },
     {
+      title: "POS",
+      url: "/pos",
+      icon: ShoppingCart,
+    },
+    {
       title: "Products",
       url: "/products",
       icon: ShoppingBag,
@@ -74,7 +79,7 @@ export function AppSidebar() {
     {
       title: "Sales",
       url: "/sales",
-      icon: ShoppingCart,
+      icon: FileBarChart,
     },
     {
       title: "Inventory",
@@ -90,7 +95,7 @@ export function AppSidebar() {
 
   const cashierMenuItems = [
     {
-      title: "Sales",
+      title: "POS",
       url: "/",
       icon: ShoppingCart,
     },
