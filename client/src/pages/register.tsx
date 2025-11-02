@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ShoppingBag } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -63,13 +64,17 @@ export default function Register() {
       }
 
       const user = await response.json();
+      
+      // Invalidate auth query to refresh user state
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
         title: "Account created!",
         description: `Welcome, ${user.username}!`,
       });
 
-      // Redirect to dashboard
-      setLocation("/");
+      // Force reload to ensure all state is fresh
+      window.location.href = "/";
     } catch (error: any) {
       toast({
         title: "Registration failed",
