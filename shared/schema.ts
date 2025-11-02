@@ -49,7 +49,9 @@ export const products = pgTable("products", {
   category: varchar("category", { length: 100 }).notNull(), // shirts, pants, accessories, etc.
   size: varchar("size", { length: 50 }), // S, M, L, XL, etc.
   color: varchar("color", { length: 100 }),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  purchasePrice: decimal("purchase_price", { precision: 10, scale: 2 }).notNull().default('0'), // Cost price
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(), // Sales price (for backward compatibility)
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default('0'), // Tax percentage (e.g., 10.00 for 10%)
   stock: integer("stock").notNull().default(0),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   sku: varchar("sku", { length: 100 }).unique(),
@@ -61,7 +63,9 @@ export const products = pgTable("products", {
 });
 
 export const insertProductSchema = createInsertSchema(products, {
+  purchasePrice: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()),
   price: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()),
+  taxRate: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()).optional(),
   stock: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
   lowStockThreshold: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
 }).omit({

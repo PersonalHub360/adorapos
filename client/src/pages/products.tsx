@@ -227,26 +227,27 @@ export default function Products() {
                 <TableHead className="w-20">Image</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Code</TableHead>
-                <TableHead>Brand</TableHead>
                 <TableHead>Category</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
-                <TableHead className="text-right">Stock Worth</TableHead>
+                <TableHead>Size</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Purchase Price</TableHead>
+                <TableHead className="text-right">Sales Price</TableHead>
+                <TableHead className="text-right">Tax %</TableHead>
+                <TableHead className="text-right">Stock Value</TableHead>
                 <TableHead className="text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProducts.map((product, index) => {
-                const price = parseFloat(product.price);
-                const cost = price * 0.65; // Assuming 65% cost ratio
-                const stockWorth = price * product.stock;
+                const salesPrice = parseFloat(product.price);
+                const purchasePrice = parseFloat(product.purchasePrice || '0');
+                const taxRate = parseFloat(product.taxRate || '0');
+                const stockValue = salesPrice * product.stock;
                 
                 return (
                   <TableRow key={product.id} data-testid={`row-product-${product.id}`}>
                     <TableCell className="font-medium text-muted-foreground">
-                      {index}
+                      {index + 1}
                     </TableCell>
                     <TableCell>
                       <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center overflow-hidden">
@@ -269,26 +270,26 @@ export default function Products() {
                     <TableCell className="text-muted-foreground">
                       {product.sku || '-'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {product.size || '-'}
-                    </TableCell>
                     <TableCell>
                       {product.category}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {product.size || '-'}
                     </TableCell>
                     <TableCell className="text-right tabular-nums" data-testid={`text-stock-${product.id}`}>
                       {product.stock}
                     </TableCell>
-                    <TableCell>
-                      Piece
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      ${purchasePrice.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-right font-medium tabular-nums" data-testid={`text-product-price-${product.id}`}>
-                      ${price.toFixed(2)}
+                      ${salesPrice.toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      ${cost.toFixed(2)}
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {taxRate.toFixed(2)}%
                     </TableCell>
                     <TableCell className="text-right font-semibold tabular-nums">
-                      ${stockWorth.toFixed(2)}
+                      ${stockValue.toFixed(2)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
@@ -695,7 +696,9 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
     category: product?.category || "",
     size: product?.size || "",
     color: product?.color || "",
+    purchasePrice: product?.purchasePrice || "0",
     price: product?.price || "0",
+    taxRate: product?.taxRate || "0",
     stock: product?.stock || 0,
     lowStockThreshold: product?.lowStockThreshold || 5,
     sku: product?.sku || "",
@@ -937,7 +940,24 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="price">Price *</Label>
+            <Label htmlFor="purchasePrice">Purchase Price *</Label>
+            <Input
+              id="purchasePrice"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.purchasePrice}
+              onChange={(e) => setFormData({ ...formData, purchasePrice: e.target.value })}
+              required
+              placeholder="Cost price"
+              data-testid="input-product-purchase-price"
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="price">Sales Price *</Label>
             <Input
               id="price"
               type="number"
@@ -946,7 +966,22 @@ function ProductForm({ product, onSuccess }: { product?: Product; onSuccess: () 
               value={formData.price}
               onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               required
+              placeholder="Selling price"
               data-testid="input-product-price"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="taxRate">Tax Rate (%)</Label>
+            <Input
+              id="taxRate"
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={formData.taxRate}
+              onChange={(e) => setFormData({ ...formData, taxRate: e.target.value })}
+              placeholder="e.g., 10 for 10%"
+              data-testid="input-product-tax-rate"
             />
           </div>
         </div>
