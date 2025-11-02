@@ -60,7 +60,11 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertProductSchema = createInsertSchema(products).omit({
+export const insertProductSchema = createInsertSchema(products, {
+  price: z.string().or(z.number()).transform(val => typeof val === 'string' ? val : val.toString()),
+  stock: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
+  lowStockThreshold: z.number().or(z.string()).transform(val => typeof val === 'string' ? parseInt(val) : val),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
