@@ -16,6 +16,7 @@ import Customers from "@/pages/customers";
 import Sales from "@/pages/sales";
 import Inventory from "@/pages/inventory";
 import Reports from "@/pages/reports";
+import Settings from "@/pages/settings";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
@@ -67,6 +68,7 @@ function Router() {
                   <Route path="/sales" component={Sales} />
                   <Route path="/inventory" component={Inventory} />
                   <Route path="/reports" component={Reports} />
+                  <Route path="/settings" component={Settings} />
                 </>
               ) : (
                 <>

@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { Product, InsertProduct } from "@shared/schema";
+import type { Product, InsertProduct, PaperSize } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -66,6 +66,10 @@ export default function Products() {
 
   const { data: products, isLoading } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  const { data: paperSizes } = useQuery<PaperSize[]>({
+    queryKey: ["/api/paper-sizes"],
   });
 
   // Get unique sizes and colors from products
@@ -526,17 +530,33 @@ export default function Products() {
             {/* Paper Size */}
             <div className="space-y-2">
               <Label>Paper Size *</Label>
-              <Select defaultValue="default">
+              <Select defaultValue="">
                 <SelectTrigger data-testid="select-paper-size">
                   <SelectValue placeholder="Select paper size..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">Select paper size...</SelectItem>
-                  <SelectItem value="a4">A4</SelectItem>
-                  <SelectItem value="letter">Letter</SelectItem>
-                  <SelectItem value="label">Label (2.25" x 1.25")</SelectItem>
+                  <SelectItem value="">Select paper size...</SelectItem>
+                  {paperSizes?.filter(size => size.isActive).map((size) => {
+                    const widthInch = (size.widthMm / 25.4).toFixed(2);
+                    const heightInch = (size.heightMm / 25.4).toFixed(2);
+                    return (
+                      <SelectItem key={size.id} value={size.id}>
+                        {size.widthMm} mm ({widthInch} inch)
+                      </SelectItem>
+                    );
+                  })}
+                  {(!paperSizes || paperSizes.filter(s => s.isActive).length === 0) && (
+                    <SelectItem value="none" disabled>
+                      No paper sizes configured
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {(!paperSizes || paperSizes.filter(s => s.isActive).length === 0) && (
+                <p className="text-xs text-muted-foreground">
+                  Configure paper sizes in Settings
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}

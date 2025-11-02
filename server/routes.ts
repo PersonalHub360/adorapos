@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./localAuth";
-import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema } from "@shared/schema";
+import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 
@@ -279,6 +279,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting promo code:", error);
       res.status(500).json({ message: "Failed to delete promo code" });
+    }
+  });
+
+  // Paper size routes
+  app.get("/api/paper-sizes", isAuthenticated, async (req, res) => {
+    try {
+      const paperSizes = await storage.getAllPaperSizes();
+      res.json(paperSizes);
+    } catch (error) {
+      console.error("Error fetching paper sizes:", error);
+      res.status(500).json({ message: "Failed to fetch paper sizes" });
+    }
+  });
+
+  app.post("/api/paper-sizes", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertPaperSizeSchema.parse(req.body);
+      const paperSize = await storage.createPaperSize(validatedData);
+      res.status(201).json(paperSize);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid paper size data", errors: error.errors });
+      }
+      console.error("Error creating paper size:", error);
+      res.status(500).json({ message: "Failed to create paper size" });
+    }
+  });
+
+  app.patch("/api/paper-sizes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const paperSize = await storage.updatePaperSize(req.params.id, req.body);
+      res.json(paperSize);
+    } catch (error) {
+      console.error("Error updating paper size:", error);
+      res.status(500).json({ message: "Failed to update paper size" });
+    }
+  });
+
+  app.delete("/api/paper-sizes/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deletePaperSize(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting paper size:", error);
+      res.status(500).json({ message: "Failed to delete paper size" });
     }
   });
 

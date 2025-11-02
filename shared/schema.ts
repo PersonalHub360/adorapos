@@ -107,6 +107,26 @@ export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 export type PromoCode = typeof promoCodes.$inferSelect;
 
+// Paper sizes table - Barcode label sizes
+export const paperSizes = pgTable("paper_sizes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull(),
+  widthMm: integer("width_mm").notNull(),
+  heightMm: integer("height_mm").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPaperSizeSchema = createInsertSchema(paperSizes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPaperSize = z.infer<typeof insertPaperSizeSchema>;
+export type PaperSize = typeof paperSizes.$inferSelect;
+
 // Sales table - Main transaction records
 export const sales = pgTable("sales", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

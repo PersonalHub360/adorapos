@@ -5,6 +5,7 @@ import {
   sales,
   saleItems,
   promoCodes,
+  paperSizes,
   type User,
   type UpsertUser,
   type Product,
@@ -17,6 +18,8 @@ import {
   type InsertSaleItem,
   type PromoCode,
   type InsertPromoCode,
+  type PaperSize,
+  type InsertPaperSize,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
@@ -58,6 +61,13 @@ export interface IStorage {
   createPromoCode(promoCode: InsertPromoCode): Promise<PromoCode>;
   updatePromoCode(id: string, promoCode: Partial<InsertPromoCode>): Promise<PromoCode>;
   deletePromoCode(id: string): Promise<void>;
+
+  // Paper size operations
+  getAllPaperSizes(): Promise<PaperSize[]>;
+  getPaperSize(id: string): Promise<PaperSize | undefined>;
+  createPaperSize(paperSize: InsertPaperSize): Promise<PaperSize>;
+  updatePaperSize(id: string, paperSize: Partial<InsertPaperSize>): Promise<PaperSize>;
+  deletePaperSize(id: string): Promise<void>;
 
   // Dashboard & Reports
   getDashboardStats(): Promise<{
@@ -363,6 +373,34 @@ export class DatabaseStorage implements IStorage {
 
   async deletePromoCode(id: string): Promise<void> {
     await db.delete(promoCodes).where(eq(promoCodes.id, id));
+  }
+
+  // Paper size operations
+  async getAllPaperSizes(): Promise<PaperSize[]> {
+    return await db.select().from(paperSizes).orderBy(desc(paperSizes.createdAt));
+  }
+
+  async getPaperSize(id: string): Promise<PaperSize | undefined> {
+    const [paperSize] = await db.select().from(paperSizes).where(eq(paperSizes.id, id));
+    return paperSize;
+  }
+
+  async createPaperSize(paperSize: InsertPaperSize): Promise<PaperSize> {
+    const [newPaperSize] = await db.insert(paperSizes).values(paperSize).returning();
+    return newPaperSize;
+  }
+
+  async updatePaperSize(id: string, paperSize: Partial<InsertPaperSize>): Promise<PaperSize> {
+    const [updated] = await db
+      .update(paperSizes)
+      .set({ ...paperSize, updatedAt: new Date() })
+      .where(eq(paperSizes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deletePaperSize(id: string): Promise<void> {
+    await db.delete(paperSizes).where(eq(paperSizes.id, id));
   }
 
   // Dashboard & Reports

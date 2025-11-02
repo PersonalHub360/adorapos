@@ -91,6 +91,11 @@ export function AppSidebar() {
       url: "/reports",
       icon: FileBarChart,
     },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
   ];
 
   const cashierMenuItems = [
