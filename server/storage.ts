@@ -6,6 +6,9 @@ import {
   saleItems,
   promoCodes,
   paperSizes,
+  categories,
+  brands,
+  units,
   type User,
   type UpsertUser,
   type Product,
@@ -20,6 +23,12 @@ import {
   type InsertPromoCode,
   type PaperSize,
   type InsertPaperSize,
+  type Category,
+  type InsertCategory,
+  type Brand,
+  type InsertBrand,
+  type Unit,
+  type InsertUnit,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
@@ -68,6 +77,27 @@ export interface IStorage {
   createPaperSize(paperSize: InsertPaperSize): Promise<PaperSize>;
   updatePaperSize(id: string, paperSize: Partial<InsertPaperSize>): Promise<PaperSize>;
   deletePaperSize(id: string): Promise<void>;
+
+  // Category operations
+  getAllCategories(): Promise<Category[]>;
+  getCategory(id: string): Promise<Category | undefined>;
+  createCategory(category: InsertCategory): Promise<Category>;
+  updateCategory(id: string, category: Partial<InsertCategory>): Promise<Category>;
+  deleteCategory(id: string): Promise<void>;
+
+  // Brand operations
+  getAllBrands(): Promise<Brand[]>;
+  getBrand(id: string): Promise<Brand | undefined>;
+  createBrand(brand: InsertBrand): Promise<Brand>;
+  updateBrand(id: string, brand: Partial<InsertBrand>): Promise<Brand>;
+  deleteBrand(id: string): Promise<void>;
+
+  // Unit operations
+  getAllUnits(): Promise<Unit[]>;
+  getUnit(id: string): Promise<Unit | undefined>;
+  createUnit(unit: InsertUnit): Promise<Unit>;
+  updateUnit(id: string, unit: Partial<InsertUnit>): Promise<Unit>;
+  deleteUnit(id: string): Promise<void>;
 
   // Dashboard & Reports
   getDashboardStats(): Promise<{
@@ -401,6 +431,90 @@ export class DatabaseStorage implements IStorage {
 
   async deletePaperSize(id: string): Promise<void> {
     await db.delete(paperSizes).where(eq(paperSizes.id, id));
+  }
+
+  // Category operations
+  async getAllCategories(): Promise<Category[]> {
+    return await db.select().from(categories).orderBy(desc(categories.createdAt));
+  }
+
+  async getCategory(id: string): Promise<Category | undefined> {
+    const [category] = await db.select().from(categories).where(eq(categories.id, id));
+    return category;
+  }
+
+  async createCategory(category: InsertCategory): Promise<Category> {
+    const [newCategory] = await db.insert(categories).values(category).returning();
+    return newCategory;
+  }
+
+  async updateCategory(id: string, category: Partial<InsertCategory>): Promise<Category> {
+    const [updated] = await db
+      .update(categories)
+      .set({ ...category, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    await db.delete(categories).where(eq(categories.id, id));
+  }
+
+  // Brand operations
+  async getAllBrands(): Promise<Brand[]> {
+    return await db.select().from(brands).orderBy(desc(brands.createdAt));
+  }
+
+  async getBrand(id: string): Promise<Brand | undefined> {
+    const [brand] = await db.select().from(brands).where(eq(brands.id, id));
+    return brand;
+  }
+
+  async createBrand(brand: InsertBrand): Promise<Brand> {
+    const [newBrand] = await db.insert(brands).values(brand).returning();
+    return newBrand;
+  }
+
+  async updateBrand(id: string, brand: Partial<InsertBrand>): Promise<Brand> {
+    const [updated] = await db
+      .update(brands)
+      .set({ ...brand, updatedAt: new Date() })
+      .where(eq(brands.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteBrand(id: string): Promise<void> {
+    await db.delete(brands).where(eq(brands.id, id));
+  }
+
+  // Unit operations
+  async getAllUnits(): Promise<Unit[]> {
+    return await db.select().from(units).orderBy(desc(units.createdAt));
+  }
+
+  async getUnit(id: string): Promise<Unit | undefined> {
+    const [unit] = await db.select().from(units).where(eq(units.id, id));
+    return unit;
+  }
+
+  async createUnit(unit: InsertUnit): Promise<Unit> {
+    const [newUnit] = await db.insert(units).values(unit).returning();
+    return newUnit;
+  }
+
+  async updateUnit(id: string, unit: Partial<InsertUnit>): Promise<Unit> {
+    const [updated] = await db
+      .update(units)
+      .set({ ...unit, updatedAt: new Date() })
+      .where(eq(units.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteUnit(id: string): Promise<void> {
+    await db.delete(units).where(eq(units.id, id));
   }
 
   // Dashboard & Reports

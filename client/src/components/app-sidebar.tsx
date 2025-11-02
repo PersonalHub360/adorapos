@@ -7,8 +7,16 @@ import {
   FileBarChart,
   Settings,
   LogOut,
+  ChevronRight,
+  Plus,
+  List,
+  Tag,
+  Building2,
+  Ruler,
+  Barcode,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -20,7 +28,11 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +43,7 @@ export function AppSidebar() {
   const [location, setLocation] = useLocation();
   const { user, isAdmin } = useAuth();
   const { toast } = useToast();
+  const [productsOpen, setProductsOpen] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -55,6 +68,39 @@ export function AppSidebar() {
     }
   };
 
+  const productSubMenuItems = [
+    {
+      title: "Product List",
+      url: "/products",
+      icon: List,
+    },
+    {
+      title: "Add Product",
+      url: "/products/add",
+      icon: Plus,
+    },
+    {
+      title: "Categories",
+      url: "/products/categories",
+      icon: Tag,
+    },
+    {
+      title: "Brands",
+      url: "/products/brands",
+      icon: Building2,
+    },
+    {
+      title: "Units",
+      url: "/products/units",
+      icon: Ruler,
+    },
+    {
+      title: "Print Barcode",
+      url: "/products/print-barcode",
+      icon: Barcode,
+    },
+  ];
+
   const adminMenuItems = [
     {
       title: "Dashboard",
@@ -65,11 +111,6 @@ export function AppSidebar() {
       title: "POS",
       url: "/pos",
       icon: ShoppingCart,
-    },
-    {
-      title: "Products",
-      url: "/products",
-      icon: ShoppingBag,
     },
     {
       title: "Customers",
@@ -156,6 +197,38 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {isAdmin && (
+                <Collapsible open={productsOpen} onOpenChange={setProductsOpen} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton data-testid="link-products-menu">
+                        <ShoppingBag className="h-5 w-5" />
+                        <span>Products</span>
+                        <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {productSubMenuItems.map((subItem) => (
+                          <SidebarMenuSubItem key={subItem.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location === subItem.url}
+                              data-testid={`link-${subItem.title.toLowerCase().replace(/\s+/g, '-')}`}
+                            >
+                              <Link href={subItem.url}>
+                                <subItem.icon className="h-4 w-4" />
+                                <span>{subItem.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

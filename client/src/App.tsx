@@ -12,6 +12,11 @@ import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import POS from "@/pages/pos";
 import Products from "@/pages/products";
+import Categories from "@/pages/categories";
+import Brands from "@/pages/brands";
+import Units from "@/pages/units";
+import AddProduct from "@/pages/add-product";
+import PrintBarcode from "@/pages/print-barcode";
 import Customers from "@/pages/customers";
 import Sales from "@/pages/sales";
 import Inventory from "@/pages/inventory";
@@ -64,6 +69,11 @@ function Router() {
                   <Route path="/" component={Dashboard} />
                   <Route path="/pos" component={POS} />
                   <Route path="/products" component={Products} />
+                  <Route path="/products/add" component={AddProduct} />
+                  <Route path="/products/categories" component={Categories} />
+                  <Route path="/products/brands" component={Brands} />
+                  <Route path="/products/units" component={Units} />
+                  <Route path="/products/print-barcode" component={PrintBarcode} />
                   <Route path="/customers" component={Customers} />
                   <Route path="/sales" component={Sales} />
                   <Route path="/inventory" component={Inventory} />

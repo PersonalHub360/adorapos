@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./localAuth";
-import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema } from "@shared/schema";
+import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema, insertCategorySchema, insertBrandSchema, insertUnitSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 
@@ -324,6 +324,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting paper size:", error);
       res.status(500).json({ message: "Failed to delete paper size" });
+    }
+  });
+
+  // Category routes
+  app.get("/api/categories", isAuthenticated, async (req, res) => {
+    try {
+      const categories = await storage.getAllCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/categories", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertCategorySchema.parse(req.body);
+      const category = await storage.createCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid category data", errors: error.errors });
+      }
+      console.error("Error creating category:", error);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.patch("/api/categories/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const category = await storage.updateCategory(req.params.id, req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ message: "Failed to update category" });
+    }
+  });
+
+  app.delete("/api/categories/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteCategory(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+  // Brand routes
+  app.get("/api/brands", isAuthenticated, async (req, res) => {
+    try {
+      const brands = await storage.getAllBrands();
+      res.json(brands);
+    } catch (error) {
+      console.error("Error fetching brands:", error);
+      res.status(500).json({ message: "Failed to fetch brands" });
+    }
+  });
+
+  app.post("/api/brands", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertBrandSchema.parse(req.body);
+      const brand = await storage.createBrand(validatedData);
+      res.status(201).json(brand);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid brand data", errors: error.errors });
+      }
+      console.error("Error creating brand:", error);
+      res.status(500).json({ message: "Failed to create brand" });
+    }
+  });
+
+  app.patch("/api/brands/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const brand = await storage.updateBrand(req.params.id, req.body);
+      res.json(brand);
+    } catch (error) {
+      console.error("Error updating brand:", error);
+      res.status(500).json({ message: "Failed to update brand" });
+    }
+  });
+
+  app.delete("/api/brands/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteBrand(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting brand:", error);
+      res.status(500).json({ message: "Failed to delete brand" });
+    }
+  });
+
+  // Unit routes
+  app.get("/api/units", isAuthenticated, async (req, res) => {
+    try {
+      const units = await storage.getAllUnits();
+      res.json(units);
+    } catch (error) {
+      console.error("Error fetching units:", error);
+      res.status(500).json({ message: "Failed to fetch units" });
+    }
+  });
+
+  app.post("/api/units", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertUnitSchema.parse(req.body);
+      const unit = await storage.createUnit(validatedData);
+      res.status(201).json(unit);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid unit data", errors: error.errors });
+      }
+      console.error("Error creating unit:", error);
+      res.status(500).json({ message: "Failed to create unit" });
+    }
+  });
+
+  app.patch("/api/units/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const unit = await storage.updateUnit(req.params.id, req.body);
+      res.json(unit);
+    } catch (error) {
+      console.error("Error updating unit:", error);
+      res.status(500).json({ message: "Failed to update unit" });
+    }
+  });
+
+  app.delete("/api/units/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteUnit(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting unit:", error);
+      res.status(500).json({ message: "Failed to delete unit" });
     }
   });
 
