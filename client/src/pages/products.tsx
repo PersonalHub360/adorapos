@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Edit, Trash2, Filter, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Filter, Eye, Barcode, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,6 +58,9 @@ export default function Products() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
+  const [barcodePrintDialogOpen, setBarcodePrintDialogOpen] = useState(false);
+  const [selectedBarcodeProducts, setSelectedBarcodeProducts] = useState<Array<{product: Product, quantity: number}>>([]);
+  const [barcodeSearchQuery, setBarcodeSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -278,6 +281,18 @@ export default function Products() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600"
+                          onClick={() => {
+                            setSelectedBarcodeProducts([{product, quantity: 1}]);
+                            setBarcodePrintDialogOpen(true);
+                          }}
+                          data-testid={`button-barcode-${product.id}`}
+                        >
+                          <Barcode className="h-4 w-4" />
+                        </Button>
                         {isAdmin && (
                           <>
                             <Button
@@ -360,6 +375,189 @@ export default function Products() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Barcode Print Dialog */}
+      <Dialog open={barcodePrintDialogOpen} onOpenChange={setBarcodePrintDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Print Barcode</DialogTitle>
+            <DialogDescription>
+              The field labels marked with * are required input fields.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Add Product Section */}
+            <div className="space-y-2">
+              <Label>Add Product *</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Please type product code and select..."
+                    value={barcodeSearchQuery}
+                    onChange={(e) => setBarcodeSearchQuery(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-barcode-search"
+                  />
+                </div>
+                <Button 
+                  onClick={() => {
+                    if (!barcodeSearchQuery.trim()) return;
+                    const product = products?.find(
+                      p => p.sku?.toLowerCase() === barcodeSearchQuery.toLowerCase() || 
+                           p.name.toLowerCase().includes(barcodeSearchQuery.toLowerCase())
+                    );
+                    if (product) {
+                      const exists = selectedBarcodeProducts.find(item => item.product.id === product.id);
+                      if (!exists) {
+                        setSelectedBarcodeProducts([...selectedBarcodeProducts, {product, quantity: 1}]);
+                      }
+                      setBarcodeSearchQuery("");
+                    }
+                  }}
+                  data-testid="button-add-barcode-product"
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+
+            {/* Products Table */}
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead className="w-32">Quantity</TableHead>
+                    <TableHead className="w-24 text-center">Delete</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedBarcodeProducts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                        No products added. Search and add products above.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    selectedBarcodeProducts.map((item, index) => (
+                      <TableRow key={item.product.id}>
+                        <TableCell className="font-medium">{item.product.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{item.product.sku || '-'}</TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newQuantity = parseInt(e.target.value) || 1;
+                              setSelectedBarcodeProducts(
+                                selectedBarcodeProducts.map((p, i) =>
+                                  i === index ? {...p, quantity: newQuantity} : p
+                                )
+                              );
+                            }}
+                            className="w-full"
+                            data-testid={`input-quantity-${item.product.id}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedBarcodeProducts(
+                                selectedBarcodeProducts.filter((_, i) => i !== index)
+                              );
+                            }}
+                            data-testid={`button-delete-barcode-${item.product.id}`}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+
+            {/* Print Options */}
+            <div className="space-y-3">
+              <Label>Print:</Label>
+              <div className="flex gap-6">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="print-product-name"
+                    defaultChecked
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="print-product-name" className="font-normal cursor-pointer">
+                    Product Name
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="print-price"
+                    defaultChecked
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="print-price" className="font-normal cursor-pointer">
+                    Price
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="print-promo-price"
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="print-promo-price" className="font-normal cursor-pointer">
+                    Promotional Price
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Paper Size */}
+            <div className="space-y-2">
+              <Label>Paper Size *</Label>
+              <Select defaultValue="default">
+                <SelectTrigger data-testid="select-paper-size">
+                  <SelectValue placeholder="Select paper size..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Select paper size...</SelectItem>
+                  <SelectItem value="a4">A4</SelectItem>
+                  <SelectItem value="letter">Letter</SelectItem>
+                  <SelectItem value="label">Label (2.25" x 1.25")</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex justify-start">
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  toast({
+                    title: "Printing barcodes",
+                    description: `Generating barcodes for ${selectedBarcodeProducts.length} product(s)`,
+                  });
+                  // In a real implementation, this would generate and print the barcodes
+                }}
+                data-testid="button-submit-barcode"
+              >
+                Submit
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
