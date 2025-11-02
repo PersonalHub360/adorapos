@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2, Printer, Check } from "lucide-react";
+import JsBarcode from "jsbarcode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -135,6 +136,44 @@ export default function PrintBarcode() {
       title: "Print sent",
       description: "Barcode labels sent to printer",
     });
+  };
+
+  useEffect(() => {
+    if (showPreview) {
+      selectedProducts.forEach((item) => {
+        for (let i = 0; i < item.quantity; i++) {
+          const canvas = document.getElementById(`barcode-${item.product.id}-${i}`) as HTMLCanvasElement;
+          if (canvas && item.product.sku) {
+            try {
+              JsBarcode(canvas, item.product.sku, {
+                format: getBarcodeFormat(item.product.barcodeSymbology),
+                width: 2,
+                height: 60,
+                displayValue: false,
+              });
+            } catch (error) {
+              console.error("Error generating barcode:", error);
+            }
+          }
+        }
+      });
+    }
+  }, [showPreview, selectedProducts]);
+
+  const getBarcodeFormat = (symbology?: string | null) => {
+    switch (symbology) {
+      case "Code39":
+        return "CODE39";
+      case "EAN13":
+        return "EAN13";
+      case "UPCA":
+        return "UPC";
+      case "QRCode":
+        return "CODE128"; // JsBarcode doesn't support QR, fallback to CODE128
+      case "Code128":
+      default:
+        return "CODE128";
+    }
   };
 
   return (
@@ -365,10 +404,15 @@ export default function PrintBarcode() {
                 Array.from({ length: item.quantity }).map((_, index) => (
                   <div
                     key={`${item.product.id}-${index}`}
-                    className="border rounded-md p-4 text-center space-y-2"
+                    className="border rounded-md p-4 text-center space-y-2 bg-white"
                   >
-                    <div className="font-mono text-2xl font-bold">{item.product.sku}</div>
-                    <div className="h-16 bg-black bg-[linear-gradient(90deg,black_1px,transparent_1px,transparent_2px,black_2px)] bg-[length:3px_100%]"></div>
+                    <div className="font-mono text-lg font-bold">{item.product.sku}</div>
+                    <div className="flex justify-center">
+                      <canvas
+                        id={`barcode-${item.product.id}-${index}`}
+                        className="max-w-full"
+                      />
+                    </div>
                     
                     {printOptions.productName && (
                       <div className="text-sm font-medium">{item.product.name}</div>
