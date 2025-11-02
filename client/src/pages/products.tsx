@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Search, Edit, Trash2, Filter, Eye, Barcode, Upload, Download, FileText, Printer } from "lucide-react";
-import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -144,11 +144,10 @@ export default function Products() {
     return "In Stock";
   };
 
-  const downloadSampleCSV = () => {
+  const downloadSampleExcel = () => {
     const sampleData = [
       {
         name: "Example T-Shirt",
-        sku: "12345",
         category: "Shirts",
         size: "M",
         color: "Blue",
@@ -162,24 +161,18 @@ export default function Products() {
       }
     ];
     
-    const csv = Papa.unparse(sampleData);
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "products_sample.csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+    XLSX.writeFile(workbook, "products_template.xlsx");
     
     toast({
-      title: "Sample downloaded",
-      description: "Sample CSV file has been downloaded",
+      title: "Template downloaded",
+      description: "Excel template file has been downloaded. Product codes will be auto-generated during import.",
     });
   };
 
-  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -187,156 +180,124 @@ export default function Products() {
     setValidationErrors([]);
     setSaveErrors([]);
     
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
+      
+      // Track original row indices for accurate error reporting
+      type ProductWithRow = { product: InsertProduct; originalRow: number; sku: string };
+      const validProducts: ProductWithRow[] = [];
+      const vErrors: { row: number; sku: string; error: string }[] = [];
+
+      // Generate unique product codes for all rows
+      const codesResponse = await apiRequest("POST", "/api/products/generate-codes", { count: rows.length });
+      const generatedCodes = codesResponse.codes as string[];
+      
+      // Validate each row
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2; // +2 because: +1 for array index, +1 for header row
+        const sku = generatedCodes[i];
+        
         try {
-          const rows = results.data as any[];
+          // Validate against schema (SKU is now auto-generated)
+          const validated = insertProductSchema.parse({
+            name: row.name,
+            sku: sku,
+            category: row.category,
+            size: row.size || null,
+            color: row.color || null,
+            purchasePrice: row.purchasePrice || "0",
+            price: row.price,
+            taxRate: row.taxRate || "0",
+            stock: row.stock || 0,
+            lowStockThreshold: row.lowStockThreshold || 5,
+            description: row.description || null,
+            imageUrl: "",
+            barcodeSymbology: row.barcodeSymbology || "Code128",
+          });
           
-          // Track original row indices and SKUs for accurate error reporting
-          type ProductWithRow = { product: InsertProduct; originalRow: number; sku: string };
-          const validProducts: ProductWithRow[] = [];
-          const vErrors: { row: number; sku: string; error: string }[] = [];
-
-          // Get existing SKUs from database
-          const existingSKUs = new Set(products?.map(p => p.sku).filter(Boolean) || []);
-
-          // Preprocess: collect all SKUs from CSV to detect file-level duplicates
-          const csvSKUs = new Map<string, number>(); // SKU -> first row number (0-indexed)
-          for (let i = 0; i < rows.length; i++) {
-            const sku = rows[i].sku;
-            if (sku) {
-              if (!csvSKUs.has(sku)) {
-                csvSKUs.set(sku, i); // Store 0-based index
-              }
-            }
-          }
-
-          // Validate each row
-          for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const rowNum = i + 2; // +2 because: +1 for array index, +1 for header row
-            
-            try {
-              // Check for duplicate SKU in database
-              if (row.sku && existingSKUs.has(row.sku)) {
-                vErrors.push({ row: rowNum, sku: row.sku, error: "SKU already exists in database" });
-                continue;
-              }
-
-              // Check for duplicate SKU in file (skip if this is the first occurrence)
-              if (row.sku && csvSKUs.get(row.sku) !== i) {
-                const firstRow = csvSKUs.get(row.sku)! + 2; // Convert to display row number
-                vErrors.push({ row: rowNum, sku: row.sku, error: `Duplicate SKU in file (first at row ${firstRow})` });
-                continue;
-              }
-
-              // Validate against schema
-              const validated = insertProductSchema.parse({
-                name: row.name,
-                sku: row.sku,
-                category: row.category,
-                size: row.size || null,
-                color: row.color || null,
-                purchasePrice: row.purchasePrice || "0",
-                price: row.price,
-                taxRate: row.taxRate || "0",
-                stock: row.stock || 0,
-                lowStockThreshold: row.lowStockThreshold || 5,
-                description: row.description || null,
-                imageUrl: "",
-                barcodeSymbology: row.barcodeSymbology || "Code128",
-              });
-              
-              validProducts.push({
-                product: validated,
-                originalRow: rowNum,
-                sku: row.sku || "N/A"
-              });
-            } catch (error: any) {
-              const message = error.errors?.[0]?.message || error.message || "Invalid data";
-              vErrors.push({ row: rowNum, sku: row.sku || "N/A", error: message });
-            }
-          }
-
-          // Store validation errors
-          setValidationErrors(vErrors);
-
-          // Show validation errors if all rows failed
-          if (vErrors.length > 0 && validProducts.length === 0) {
-            toast({
-              title: "Validation failed",
-              description: `All ${vErrors.length} rows have errors. See details below.`,
-              variant: "destructive",
-            });
-            setImporting(false);
-            return;
-          }
-
-          // Import valid products with accurate row tracking
-          let successCount = 0;
-          const sErrors: { row: number; sku: string; error: string }[] = [];
-
-          for (const { product, originalRow, sku } of validProducts) {
-            try {
-              await apiRequest("POST", "/api/products", product);
-              successCount++;
-            } catch (error: any) {
-              const message = error.message || "Failed to save";
-              sErrors.push({ 
-                row: originalRow, 
-                sku: sku, 
-                error: message 
-              });
-            }
-          }
-
-          // Store save errors separately
-          setSaveErrors(sErrors);
-
-          queryClient.invalidateQueries({ queryKey: ["/api/products"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-
-          // Show detailed results
-          const messages = [];
-          if (successCount > 0) messages.push(`${successCount} products imported`);
-          if (sErrors.length > 0) messages.push(`${sErrors.length} failed to save`);
-          if (vErrors.length > 0) messages.push(`${vErrors.length} validation errors`);
-
-          toast({
-            title: successCount > 0 ? "Import completed" : "Import failed",
-            description: messages.join(". ") + (vErrors.length + sErrors.length > 0 ? " See details below." : ""),
-            variant: successCount > 0 ? "default" : "destructive",
+          validProducts.push({
+            product: validated,
+            originalRow: rowNum,
+            sku: sku
           });
-
-          if (successCount > 0 && vErrors.length === 0 && sErrors.length === 0) {
-            setImportDialogOpen(false);
-            setValidationErrors([]);
-            setSaveErrors([]);
-          }
-        } catch (error) {
-          toast({
-            title: "Import failed",
-            description: "An unexpected error occurred during import.",
-            variant: "destructive",
-          });
-        } finally {
-          setImporting(false);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-          }
+        } catch (error: any) {
+          const message = error.errors?.[0]?.message || error.message || "Invalid data";
+          vErrors.push({ row: rowNum, sku: sku, error: message });
         }
-      },
-      error: (error) => {
-        setImporting(false);
+      }
+
+      // Store validation errors
+      setValidationErrors(vErrors);
+
+      // Show validation errors if all rows failed
+      if (vErrors.length > 0 && validProducts.length === 0) {
         toast({
-          title: "Parse error",
-          description: `Failed to parse CSV file: ${error.message || "Unknown error"}`,
+          title: "Validation failed",
+          description: `All ${vErrors.length} rows have errors. See details below.`,
           variant: "destructive",
         });
-      },
-    });
+        setImporting(false);
+        return;
+      }
+
+      // Import valid products with accurate row tracking
+      let successCount = 0;
+      const sErrors: { row: number; sku: string; error: string }[] = [];
+
+      for (const { product, originalRow, sku } of validProducts) {
+        try {
+          await apiRequest("POST", "/api/products", product);
+          successCount++;
+        } catch (error: any) {
+          const message = error.message || "Failed to save";
+          sErrors.push({ 
+            row: originalRow, 
+            sku: sku, 
+            error: message 
+          });
+        }
+      }
+
+      // Store save errors separately
+      setSaveErrors(sErrors);
+
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+
+      // Show detailed results
+      const messages = [];
+      if (successCount > 0) messages.push(`${successCount} products imported with auto-generated codes`);
+      if (sErrors.length > 0) messages.push(`${sErrors.length} failed to save`);
+      if (vErrors.length > 0) messages.push(`${vErrors.length} validation errors`);
+
+      toast({
+        title: successCount > 0 ? "Import completed" : "Import failed",
+        description: messages.join(". ") + (vErrors.length + sErrors.length > 0 ? " See details below." : ""),
+        variant: successCount > 0 ? "default" : "destructive",
+      });
+
+      if (successCount > 0 && vErrors.length === 0 && sErrors.length === 0) {
+        setImportDialogOpen(false);
+        setValidationErrors([]);
+        setSaveErrors([]);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Import failed",
+        description: error.message || "An unexpected error occurred during import.",
+        variant: "destructive",
+      });
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const exportToCSV = () => {
@@ -707,7 +668,7 @@ export default function Products() {
           <DialogHeader>
             <DialogTitle>Import Products</DialogTitle>
             <DialogDescription>
-              Upload a CSV file to import multiple products at once
+              Upload an Excel file to import multiple products. Product codes will be auto-generated.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -715,22 +676,22 @@ export default function Products() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv"
-                onChange={handleImportCSV}
+                accept=".xlsx,.xls"
+                onChange={handleImportExcel}
                 className="hidden"
-                id="csv-file-input"
+                id="excel-file-input"
                 disabled={importing}
               />
               <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <Button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={importing}
-                data-testid="button-choose-csv"
+                data-testid="button-choose-excel"
               >
-                {importing ? "Importing..." : "Choose CSV File"}
+                {importing ? "Importing..." : "Choose Excel File"}
               </Button>
               <p className="text-sm text-muted-foreground mt-2">
-                Supported format: CSV
+                Supported format: Excel (.xlsx, .xls)
               </p>
             </div>
             <div className="flex items-center justify-between">
@@ -740,18 +701,19 @@ export default function Products() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={downloadSampleCSV}
+                onClick={downloadSampleExcel}
                 data-testid="button-download-sample"
               >
                 <Download className="h-4 w-4 mr-2" />
-                Download Sample CSV
+                Download Excel Template
               </Button>
             </div>
             <div className="bg-muted/50 p-4 rounded-lg">
-              <h4 className="font-medium mb-2">CSV Format</h4>
+              <h4 className="font-medium mb-2">Excel Format</h4>
               <p className="text-sm text-muted-foreground">
-                Your CSV file should include these columns: name, sku, category, size, color, 
-                purchasePrice, price, taxRate, stock, lowStockThreshold, description, barcodeSymbology
+                Your Excel file should include these columns: name, category, size, color, 
+                purchasePrice, price, taxRate, stock, lowStockThreshold, description, barcodeSymbology.
+                <span className="block mt-1 font-medium text-primary">Note: Product codes (SKU) will be auto-generated (10000-99999).</span>
               </p>
             </div>
             {(validationErrors.length > 0 || saveErrors.length > 0) && (
