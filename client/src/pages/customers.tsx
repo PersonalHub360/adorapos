@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Search, Edit, Trash2, ShoppingCart } from "lucide-react";
+import { Plus, Search, Edit, Trash2, ShoppingCart, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label";
 import type { Customer, InsertCustomer, Sale } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Customers() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -45,6 +46,7 @@ export default function Customers() {
   const [deletingCustomer, setDeletingCustomer] = useState<Customer | null>(null);
   const [viewingHistory, setViewingHistory] = useState<Customer | null>(null);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
 
   const { data: customers, isLoading } = useQuery<Customer[]>({
     queryKey: ["/api/customers"],
@@ -60,6 +62,44 @@ export default function Customers() {
     customer.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     customer.phone?.includes(searchQuery)
   );
+
+  const refundMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      const response = await apiRequest("POST", `/api/sales/${saleId}/refund`, {});
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ message: "Failed to process refund" }));
+        throw new Error(error.message);
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/customers", viewingHistory?.id, "sales"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Refund processed",
+        description: "The sale has been refunded and inventory restored.",
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Refund Failed",
+        description: error?.message || "Failed to process refund. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -247,25 +287,45 @@ export default function Customers() {
                 {customerSales.map((sale) => (
                   <Card key={sale.id}>
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
                           <p className="font-medium">Sale #{sale.id.slice(0, 8)}</p>
                           <p className="text-sm text-muted-foreground">
                             {new Date(sale.createdAt!).toLocaleString()}
                           </p>
+                          {sale.refundedAt && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Refunded: {new Date(sale.refundedAt).toLocaleString()}
+                            </p>
+                          )}
                           <div className="flex gap-2 mt-2">
                             <Badge variant="secondary">{sale.paymentMethod}</Badge>
-                            <Badge>{sale.status}</Badge>
+                            <Badge variant={sale.status === 'refunded' ? 'destructive' : 'default'}>
+                              {sale.status}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold tabular-nums">
-                            ${parseFloat(sale.total).toFixed(2)}
-                          </p>
-                          {parseFloat(sale.discountAmount) > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              Saved ${parseFloat(sale.discountAmount).toFixed(2)}
+                        <div className="flex items-start gap-3">
+                          <div className="text-right">
+                            <p className="text-2xl font-bold tabular-nums">
+                              ${parseFloat(sale.total).toFixed(2)}
                             </p>
+                            {parseFloat(sale.discountAmount) > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                Saved ${parseFloat(sale.discountAmount).toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                          {isAdmin && sale.status === 'completed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => refundMutation.mutate(sale.id)}
+                              disabled={refundMutation.isPending}
+                              data-testid={`button-refund-${sale.id}`}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
                           )}
                         </div>
                       </div>

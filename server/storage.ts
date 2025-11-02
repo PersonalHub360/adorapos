@@ -47,6 +47,7 @@ export interface IStorage {
   getRecentSales(limit?: number): Promise<Sale[]>;
   getSalesByCustomer(customerId: string): Promise<Sale[]>;
   getSalesByPeriod(startDate: Date, endDate: Date): Promise<Sale[]>;
+  refundSale(id: string): Promise<Sale>;
 
   // Promo code operations
   getAllPromoCodes(): Promise<PromoCode[]>;
@@ -225,6 +226,56 @@ export class DatabaseStorage implements IStorage {
         lte(sales.createdAt, endDate)
       ))
       .orderBy(desc(sales.createdAt));
+  }
+
+  async refundSale(id: string): Promise<Sale> {
+    return await db.transaction(async (tx) => {
+      // Get the sale
+      const [sale] = await tx.select().from(sales).where(eq(sales.id, id));
+      if (!sale) {
+        throw new Error("Sale not found");
+      }
+
+      if (sale.status === 'refunded') {
+        throw new Error("Sale already refunded");
+      }
+
+      // Get sale items to reverse inventory
+      const items = await tx
+        .select()
+        .from(saleItems)
+        .where(eq(saleItems.saleId, id));
+
+      if (items.length === 0) {
+        throw new Error("No sale items found for this sale");
+      }
+
+      // Reverse inventory - add quantities back to products
+      for (const item of items) {
+        if (item.quantity > 0) {
+          await tx
+            .update(products)
+            .set({
+              stock: sql`${products.stock} + ${item.quantity}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(products.id, item.productId));
+        }
+      }
+
+      // Update sale status
+      const [refundedSale] = await tx
+        .update(sales)
+        .set({
+          status: 'refunded',
+          refundedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(sales.id, id))
+        .returning();
+
+      return refundedSale;
+    });
   }
 
   // Promo code operations

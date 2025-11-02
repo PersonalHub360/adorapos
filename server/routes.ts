@@ -198,6 +198,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/sales/:id/refund", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const refundedSale = await storage.refundSale(req.params.id);
+      res.json(refundedSale);
+    } catch (error: any) {
+      console.error("Error refunding sale:", error);
+      if (error.message === "Sale not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (error.message === "Sale already refunded") {
+        return res.status(400).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to process refund" });
+    }
+  });
+
   // Promo code routes
   app.get("/api/promo-codes", isAuthenticated, isAdmin, async (req, res) => {
     try {

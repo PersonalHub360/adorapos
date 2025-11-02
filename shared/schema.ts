@@ -115,6 +115,7 @@ export const sales = pgTable("sales", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // cash, card, digital_wallet
   status: varchar("status", { length: 20 }).notNull().default('completed'), // completed, refunded
+  refundedAt: timestamp("refunded_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
