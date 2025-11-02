@@ -23,11 +23,37 @@ import {
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export function AppSidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user, isAdmin } = useAuth();
+  const { toast } = useToast();
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Logged out",
+          description: "You have been logged out successfully",
+        });
+        // Force page reload to clear all state and redirect to login
+        window.location.href = "/login";
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to logout. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const adminMenuItems = [
     {
@@ -134,21 +160,22 @@ export function AppSidebar() {
             <p className="text-sm font-medium truncate">
               {user?.firstName && user?.lastName
                 ? `${user.firstName} ${user.lastName}`
-                : user?.email || 'User'}
+                : user?.username || user?.email || 'User'}
             </p>
             <Badge variant="secondary" className="text-xs">
               {user?.role === 'admin' ? 'Admin' : 'Cashier'}
             </Badge>
           </div>
         </div>
-        <a
-          href="/api/logout"
-          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover-elevate active-elevate-2"
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
+          onClick={handleLogout}
           data-testid="button-logout"
         >
           <LogOut className="h-4 w-4" />
           <span>Logout</span>
-        </a>
+        </Button>
       </SidebarFooter>
     </Sidebar>
   );

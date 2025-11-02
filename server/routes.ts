@@ -1,25 +1,29 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated, isAdmin } from "./replitAuth";
+import { setupAuth } from "./localAuth";
 import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema } from "@shared/schema";
 import { z } from "zod";
+import type { User } from "@shared/schema";
+
+// Auth middleware
+const isAuthenticated = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+};
+
+const isAdmin = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated() && (req.user as User).role === 'admin') {
+    return next();
+  }
+  res.status(403).json({ message: "Forbidden" });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
+  // Auth middleware and routes are setup in localAuth.ts
   await setupAuth(app);
-
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
 
   // Product routes
   app.get("/api/products", isAuthenticated, async (req, res) => {
