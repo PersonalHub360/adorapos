@@ -18,7 +18,7 @@ import Units from "@/pages/units";
 import AddProduct from "@/pages/add-product";
 import PrintBarcode from "@/pages/print-barcode";
 import Customers from "@/pages/customers";
-import Sales from "@/pages/sales";
+import SalesList from "@/pages/sales-list";
 import Inventory from "@/pages/inventory";
 import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
@@ -75,7 +75,7 @@ function Router() {
                   <Route path="/products/units" component={Units} />
                   <Route path="/products/print-barcode" component={PrintBarcode} />
                   <Route path="/customers" component={Customers} />
-                  <Route path="/sales" component={Sales} />
+                  <Route path="/sales" component={SalesList} />
                   <Route path="/inventory" component={Inventory} />
                   <Route path="/reports" component={Reports} />
                   <Route path="/settings" component={Settings} />
@@ -83,6 +83,7 @@ function Router() {
               ) : (
                 <>
                   <Route path="/" component={POS} />
+                  <Route path="/pos" component={POS} />
                   <Route path="/customers" component={Customers} />
                   <Route path="/products" component={Products} />
                 </>

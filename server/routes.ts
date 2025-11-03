@@ -199,6 +199,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sales routes
+  app.get("/api/sales", isAuthenticated, async (req, res) => {
+    try {
+      const sales = await storage.getAllSales();
+      res.json(sales);
+    } catch (error) {
+      console.error("Error fetching sales:", error);
+      res.status(500).json({ message: "Failed to fetch sales" });
+    }
+  });
+
   app.post("/api/sales", isAuthenticated, async (req, res) => {
     try {
       const { sale, items } = req.body;
@@ -212,6 +222,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating sale:", error);
       res.status(500).json({ message: "Failed to create sale" });
+    }
+  });
+
+  app.post("/api/sales/import", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { sales: salesData } = req.body;
+      
+      if (!Array.isArray(salesData)) {
+        return res.status(400).json({ message: "Invalid import data" });
+      }
+
+      let imported = 0;
+      const errors: string[] = [];
+
+      for (const row of salesData) {
+        try {
+          if (!row['Payment Method'] || !row['Total']) {
+            continue;
+          }
+
+          const paymentMethod = row['Payment Method'].toUpperCase();
+          const subtotal = parseFloat(row['Subtotal'] || row['Total'] || '0');
+          const discount = parseFloat(row['Discount'] || '0');
+          const total = parseFloat(row['Total']);
+          const status = row['Status'] || 'completed';
+
+          if (isNaN(total) || total <= 0) {
+            continue;
+          }
+
+          let customerId = null;
+          if (row['Customer Name']) {
+            const customers = await storage.getAllCustomers();
+            const customer = customers.find(c => 
+              c.name.toLowerCase() === row['Customer Name'].toLowerCase()
+            );
+            
+            if (!customer) {
+              const newCustomer = await storage.createCustomer({
+                name: row['Customer Name'],
+                email: null,
+                phone: null,
+              });
+              customerId = newCustomer.id;
+            } else {
+              customerId = customer.id;
+            }
+          }
+
+          const sale = {
+            customerId,
+            userId: (req.user as User).id,
+            subtotal: subtotal.toFixed(2),
+            discountAmount: discount.toFixed(2),
+            total: total.toFixed(2),
+            paymentMethod,
+            status,
+          };
+
+          await storage.createSale(sale, []);
+          imported++;
+        } catch (rowError) {
+          errors.push(`Failed to import row: ${JSON.stringify(row)}`);
+        }
+      }
+
+      res.json({ 
+        imported, 
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Successfully imported ${imported} sales`
+      });
+    } catch (error) {
+      console.error("Error importing sales:", error);
+      res.status(500).json({ message: "Failed to import sales" });
     }
   });
 

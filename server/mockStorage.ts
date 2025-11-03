@@ -253,6 +253,10 @@ export class MockStorage implements IStorage {
     return { ...sale, id: 'mock-sale-id', createdAt: new Date(), updatedAt: new Date() } as Sale;
   }
 
+  async getAllSales(): Promise<Sale[]> {
+    return [];
+  }
+
   async getSale(id: string): Promise<Sale | undefined> {
     return undefined;
   }

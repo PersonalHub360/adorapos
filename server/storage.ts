@@ -57,6 +57,7 @@ export interface IStorage {
   deleteCustomer(id: string): Promise<void>;
 
   // Sales operations
+  getAllSales(): Promise<Sale[]>;
   createSale(sale: InsertSale, items: InsertSaleItem[]): Promise<Sale>;
   getSale(id: string): Promise<Sale | undefined>;
   getRecentSales(limit?: number): Promise<Sale[]>;
@@ -270,6 +271,40 @@ export class DatabaseStorage implements IStorage {
 
       return newSale;
     });
+  }
+
+  async getAllSales(): Promise<Sale[]> {
+    return await db
+      .select({
+        id: sales.id,
+        customerId: sales.customerId,
+        userId: sales.userId,
+        subtotal: sales.subtotal,
+        discountAmount: sales.discountAmount,
+        promoCodeId: sales.promoCodeId,
+        pointsUsed: sales.pointsUsed,
+        pointsEarned: sales.pointsEarned,
+        total: sales.total,
+        paymentMethod: sales.paymentMethod,
+        status: sales.status,
+        refundedAt: sales.refundedAt,
+        createdAt: sales.createdAt,
+        updatedAt: sales.updatedAt,
+        customer: {
+          id: customers.id,
+          name: customers.name,
+        },
+        user: {
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(sales)
+      .leftJoin(customers, eq(sales.customerId, customers.id))
+      .leftJoin(users, eq(sales.userId, users.id))
+      .orderBy(desc(sales.createdAt)) as any;
   }
 
   async getSale(id: string): Promise<Sale | undefined> {
