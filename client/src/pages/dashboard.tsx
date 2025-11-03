@@ -49,52 +49,60 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="border-2 border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today's Sales</CardTitle>
-            <DollarSign className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-md">
+              <DollarSign className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-today-sales">
+            <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 dark:from-emerald-400 dark:to-teal-400 bg-clip-text text-transparent" data-testid="text-today-sales">
               ${stats?.todaySales.toFixed(2) || '0.00'}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Revenue for today</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <ShoppingCart className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+              <ShoppingCart className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-today-transactions">
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 dark:from-blue-400 dark:to-cyan-400 bg-clip-text text-transparent" data-testid="text-today-transactions">
               {stats?.todayTransactions || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Sales processed today</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-orange-200 dark:border-orange-800 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/50 dark:to-red-950/50">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 shadow-md">
+              <AlertTriangle className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-destructive" data-testid="text-low-stock-count">
+            <div className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent" data-testid="text-low-stock-count">
               {stats?.lowStockCount || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Items need restocking</p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50">
           <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 shadow-md">
+              <Users className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold" data-testid="text-total-customers">
+            <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent" data-testid="text-total-customers">
               {stats?.totalCustomers || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Registered customers</p>
