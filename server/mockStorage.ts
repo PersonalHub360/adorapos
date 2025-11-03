@@ -393,6 +393,11 @@ export class MockStorage implements IStorage {
       todayTransactions: 0,
       lowStockCount: 0,
       totalCustomers: 0,
+      totalExpense: 0,
+      totalPurchase: 0,
+      profitLoss: 0,
+      totalOrders: 0,
+      salesByPaymentMethod: {},
     };
   }
 
