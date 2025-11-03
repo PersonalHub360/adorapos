@@ -87,16 +87,16 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-secondary/5 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-pink-50 to-blue-100 dark:from-purple-950 dark:via-pink-950 dark:to-blue-950 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-2 border-purple-200 dark:border-purple-800">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <div className="bg-primary/10 p-4 rounded-full">
-              <ShoppingBag className="h-12 w-12 text-primary" />
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 p-4 rounded-full shadow-lg">
+              <ShoppingBag className="h-12 w-12 text-white" />
             </div>
           </div>
           <div className="text-center">
-            <CardTitle className="text-3xl font-bold">Create Account</CardTitle>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">Create Account</CardTitle>
             <CardDescription className="text-base mt-2">Register for Point of Sale system</CardDescription>
           </div>
         </CardHeader>
@@ -199,7 +199,7 @@ export default function Register() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg"
               disabled={isLoading}
               data-testid="button-register"
             >

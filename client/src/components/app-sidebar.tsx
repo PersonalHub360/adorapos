@@ -169,11 +169,11 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
             <ShoppingBag className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">ClothingPOS</h2>
+            <h2 className="text-lg font-semibold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent">ClothingPOS</h2>
             <p className="text-xs text-muted-foreground">Point of Sale</p>
           </div>
         </div>
