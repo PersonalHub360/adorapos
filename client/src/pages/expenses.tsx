@@ -397,13 +397,14 @@ export default function Expenses() {
 
   const getPaymentMethodBadge = (method: string) => {
     const colors: Record<string, string> = {
-      CASH: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-      CARD: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-      ABA: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-      ACLEDA: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+      CASH: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 dark:from-green-900/50 dark:to-emerald-900/50 dark:text-green-400 border border-green-200 dark:border-green-800',
+      CARD: 'bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 dark:from-blue-900/50 dark:to-cyan-900/50 dark:text-blue-400 border border-blue-200 dark:border-blue-800',
+      ABA: 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 dark:from-purple-900/50 dark:to-pink-900/50 dark:text-purple-400 border border-purple-200 dark:border-purple-800',
+      ACLEDA: 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-800 dark:from-orange-900/50 dark:to-amber-900/50 dark:text-orange-400 border border-orange-200 dark:border-orange-800',
+      DUE: 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 dark:from-red-900/50 dark:to-rose-900/50 dark:text-red-400 border border-red-200 dark:border-red-800',
     };
     
-    return colors[method.toUpperCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    return colors[method.toUpperCase()] || 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 dark:from-gray-900/50 dark:to-slate-900/50 dark:text-gray-400 border border-gray-200 dark:border-gray-800';
   };
 
   return (
@@ -415,7 +416,7 @@ export default function Expenses() {
           </h1>
           <p className="text-muted-foreground mt-1">Track, import, and export business expenses</p>
         </div>
-        <Button size="lg" className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700" onClick={() => setIsAddOpen(true)} data-testid="button-add-expense">
+        <Button size="lg" className="bg-gradient-to-r from-orange-600 to-red-600 hover-elevate active-elevate-2" onClick={() => setIsAddOpen(true)} data-testid="button-add-expense">
           <Plus className="h-5 w-5 mr-2" />
           Add Expense
         </Button>
@@ -438,44 +439,56 @@ export default function Expenses() {
           </CardContent>
         </Card>
 
-        <Button
-          variant="outline"
-          className="h-auto p-4 flex flex-col items-start gap-2 hover-elevate"
-          onClick={handleExportCSV}
-          data-testid="button-export-csv"
-        >
-          <div className="flex items-center gap-2 w-full">
-            <Download className="h-4 w-4" />
-            <span className="text-sm font-medium">Export CSV</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Download as spreadsheet</p>
-        </Button>
+        <Card className="border-2 border-green-200 dark:border-green-800 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 hover-elevate active-elevate-2 cursor-pointer" onClick={handleExportCSV} data-testid="button-export-csv">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <Download className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="text-sm font-medium">Export CSV</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Download as spreadsheet</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 shadow-md">
+                <FileSpreadsheet className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <Button
-          variant="outline"
-          className="h-auto p-4 flex flex-col items-start gap-2 hover-elevate"
-          onClick={handleExportPDF}
-          data-testid="button-export-pdf"
-        >
-          <div className="flex items-center gap-2 w-full">
-            <FileText className="h-4 w-4" />
-            <span className="text-sm font-medium">Export PDF</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Generate report</p>
-        </Button>
+        <Card className="border-2 border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 hover-elevate active-elevate-2 cursor-pointer" onClick={handleExportPDF} data-testid="button-export-pdf">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-sm font-medium">Export PDF</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Generate report</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 shadow-md">
+                <FileText className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <Button
-          variant="outline"
-          className="h-auto p-4 flex flex-col items-start gap-2 hover-elevate"
-          onClick={handleExportExcel}
-          data-testid="button-export-excel"
-        >
-          <div className="flex items-center gap-2 w-full">
-            <FileSpreadsheet className="h-4 w-4" />
-            <span className="text-sm font-medium">Export Excel</span>
-          </div>
-          <p className="text-xs text-muted-foreground">Download as XLSX</p>
-        </Button>
+        <Card className="border-2 border-teal-200 dark:border-teal-800 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/50 dark:to-cyan-950/50 hover-elevate active-elevate-2 cursor-pointer" onClick={handleExportExcel} data-testid="button-export-excel">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <FileSpreadsheet className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+                  <span className="text-sm font-medium">Export Excel</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Download as XLSX</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 shadow-md">
+                <FileSpreadsheet className="h-4 w-4 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/50 dark:to-cyan-950/50">
           <CardContent className="p-4">
@@ -494,18 +507,18 @@ export default function Expenses() {
         </Card>
       </div>
 
-      <Card className="border-2 border-gradient">
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
+      <Card className="border-2 border-t-4 border-t-orange-500 dark:border-t-orange-400 shadow-lg">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4 bg-gradient-to-r from-orange-50/50 to-red-50/50 dark:from-orange-950/30 dark:to-red-950/30">
           <div>
-            <CardTitle>Expense Records</CardTitle>
+            <CardTitle className="bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent">Expense Records</CardTitle>
             <CardDescription>Complete list of all expenses</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleDownloadSample} data-testid="button-download-sample">
+            <Button variant="outline" className="hover-elevate active-elevate-2" onClick={handleDownloadSample} data-testid="button-download-sample">
               <Download className="h-4 w-4 mr-2" />
               Sample CSV
             </Button>
-            <Button variant="outline" onClick={handleImportClick} data-testid="button-import">
+            <Button variant="outline" className="hover-elevate active-elevate-2" onClick={handleImportClick} data-testid="button-import">
               <Upload className="h-4 w-4 mr-2" />
               Import CSV
             </Button>
@@ -550,18 +563,22 @@ export default function Expenses() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredExpenses.map((expense) => (
-                    <TableRow key={expense.id} data-testid={`row-expense-${expense.id}`}>
+                  {filteredExpenses.map((expense, index) => (
+                    <TableRow 
+                      key={expense.id} 
+                      className={`hover-elevate active-elevate-2 ${index % 2 === 0 ? 'bg-gradient-to-r from-orange-50/30 to-red-50/30 dark:from-orange-950/10 dark:to-red-950/10' : 'bg-gradient-to-r from-purple-50/30 to-pink-50/30 dark:from-purple-950/10 dark:to-pink-950/10'}`}
+                      data-testid={`row-expense-${expense.id}`}
+                    >
                       <TableCell className="font-medium">
                         {new Date(expense.date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell>{expense.category}</TableCell>
+                      <TableCell className="font-medium">{expense.category}</TableCell>
                       <TableCell>
                         <Badge className={getPaymentMethodBadge(expense.paymentMethod)}>
                           {expense.paymentMethod}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-bold tabular-nums" data-testid={`text-expense-amount-${expense.id}`}>
+                      <TableCell className="text-right font-bold tabular-nums bg-gradient-to-r from-orange-600 to-red-600 dark:from-orange-400 dark:to-red-400 bg-clip-text text-transparent" data-testid={`text-expense-amount-${expense.id}`}>
                         ${parseFloat(expense.amount).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{expense.reference || '-'}</TableCell>
@@ -569,6 +586,7 @@ export default function Expenses() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="hover-elevate active-elevate-2"
                           onClick={() => handleViewDetails(expense)}
                           data-testid={`button-view-${expense.id}`}
                         >
@@ -715,10 +733,10 @@ export default function Expenses() {
               />
 
               <div className="flex gap-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)}>
+                <Button type="button" variant="outline" className="flex-1 hover-elevate active-elevate-2" onClick={() => setIsAddOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700" disabled={createExpenseMutation.isPending} data-testid="button-submit-expense">
+                <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover-elevate active-elevate-2" disabled={createExpenseMutation.isPending} data-testid="button-submit-expense">
                   {createExpenseMutation.isPending ? "Adding..." : "Add Expense"}
                 </Button>
               </div>
@@ -796,14 +814,14 @@ export default function Expenses() {
               <div className="flex gap-3">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 hover-elevate active-elevate-2"
                   onClick={() => setIsDetailOpen(false)}
                 >
                   Close
                 </Button>
                 <Button
                   variant="destructive"
-                  className="flex-1"
+                  className="flex-1 hover-elevate active-elevate-2"
                   onClick={() => deleteExpenseMutation.mutate(selectedExpense.id)}
                   disabled={deleteExpenseMutation.isPending}
                   data-testid="button-delete-expense"
