@@ -81,6 +81,7 @@ export default function Expenses() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [uploadedAttachmentUrl, setUploadedAttachmentUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -120,6 +121,7 @@ export default function Expenses() {
         ...data,
         date: new Date(data.date),
         createdBy: user!.id,
+        attachmentUrl: uploadedAttachmentUrl,
       });
       return response.json();
     },
@@ -127,6 +129,7 @@ export default function Expenses() {
       queryClient.invalidateQueries({ queryKey: ["/api/expenses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       form.reset();
+      setUploadedAttachmentUrl(null);
       setIsAddOpen(false);
       toast({
         title: "Expense added",
@@ -211,6 +214,39 @@ export default function Expenses() {
 
   const onSubmit = (data: ExpenseFormValues) => {
     createExpenseMutation.mutate(data);
+  };
+
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/objects/upload", {});
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (result.successful && result.successful.length > 0) {
+      const uploadUrl = result.successful[0].uploadURL;
+      
+      try {
+        const response = await apiRequest("PUT", "/api/expense-attachments", {
+          attachmentURL: uploadUrl,
+        });
+        const data = await response.json();
+        setUploadedAttachmentUrl(data.objectPath);
+        toast({
+          title: "Upload successful",
+          description: "Receipt image uploaded successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to save attachment",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleExportCSV = () => {
@@ -799,6 +835,32 @@ export default function Expenses() {
                   </FormItem>
                 )}
               />
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Receipt / Invoice Image</label>
+                <div className="flex items-center gap-3">
+                  <ObjectUploader
+                    maxNumberOfFiles={1}
+                    maxFileSize={10485760}
+                    allowedFileTypes={['image/*']}
+                    onGetUploadParameters={handleGetUploadParameters}
+                    onComplete={handleUploadComplete}
+                    buttonVariant="outline"
+                    buttonClassName="hover-elevate active-elevate-2"
+                  >
+                    <Image className="h-4 w-4 mr-2" />
+                    Upload Receipt
+                  </ObjectUploader>
+                  {uploadedAttachmentUrl && (
+                    <Badge className="bg-green-600">
+                      Image uploaded ✓
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Upload a photo of the receipt or invoice (optional)
+                </p>
+              </div>
 
               <div className="flex gap-3">
                 <Button type="button" variant="outline" className="flex-1 hover-elevate active-elevate-2" onClick={() => setIsAddOpen(false)}>
