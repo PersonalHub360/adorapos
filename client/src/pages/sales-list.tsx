@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Download, Upload, FileSpreadsheet, FileText, Plus, Eye, Search } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, FileText, Eye, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import type { Sale } from "@shared/schema";
-import { Link } from "wouter";
 import Papa from "papaparse";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -321,19 +320,11 @@ export default function SalesList() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent" data-testid="text-sales-list-title">
-            Sales Management
-          </h1>
-          <p className="text-muted-foreground mt-1">View, import, and export sales transactions</p>
-        </div>
-        <Link href="/pos">
-          <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700" data-testid="button-add-sale">
-            <Plus className="h-5 w-5 mr-2" />
-            New Sale
-          </Button>
-        </Link>
+      <div>
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 bg-clip-text text-transparent" data-testid="text-sales-list-title">
+          Sales Management
+        </h1>
+        <p className="text-muted-foreground mt-1">View, import, and export sales transactions</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
