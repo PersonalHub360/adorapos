@@ -36,9 +36,11 @@ Preferred communication style: Simple, everyday language.
 - Dashboard: Overview with sales stats and low-stock alerts
 - Products: Product catalog management with CRUD operations
 - Customers: Customer database management
-- Sales: Point-of-sale interface with cart, checkout, and promo code support
+- Sales/POS: Point-of-sale interface with cart, checkout, and multiple payment methods (CASH, CARD, ABA, ACLEDA, DUE)
 - Inventory: Stock level monitoring and management
 - Reports: Sales analytics and reporting by period
+
+**Design Theme**: Colorful gradient-based design with vibrant purples, pinks, blues, and other bright colors throughout the interface
 
 **Typography**: Inter font family for optimal readability at all sizes with defined hierarchy (3xl for titles down to xs for captions)
 

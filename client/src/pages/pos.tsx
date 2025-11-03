@@ -335,26 +335,29 @@ export default function POS() {
           <span className="text-3xl font-bold tabular-nums">${grandTotal.toFixed(2)}</span>
         </div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-6 gap-3">
-          <Button className="bg-green-600 hover:bg-green-700" data-testid="button-cash">
-            Cash
-          </Button>
-          <Button variant="default" data-testid="button-pos">
-            POS
-          </Button>
-          <Button variant="outline" data-testid="button-deposit">
-            Deposit
-          </Button>
-          <Button variant="outline" data-testid="button-points">
-            Points
-          </Button>
-          <Button className="bg-orange-500 hover:bg-orange-600" data-testid="button-check">
-            Check
-          </Button>
-          <Button variant="secondary" data-testid="button-reopen">
-            Reopen Transaction
-          </Button>
+        {/* Payment Method Buttons */}
+        <div className="space-y-2">
+          <Label className="text-sm font-semibold">Payment Method</Label>
+          <div className="grid grid-cols-3 gap-3">
+            <Button className="bg-gradient-to-r from-emerald-600 to-emerald-700 shadow-md h-12" data-testid="button-cash">
+              💵 CASH
+            </Button>
+            <Button className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-md h-12" data-testid="button-card">
+              💳 CARD
+            </Button>
+            <Button className="bg-gradient-to-r from-purple-600 to-purple-700 shadow-md h-12" data-testid="button-aba">
+              🏦 ABA
+            </Button>
+            <Button className="bg-gradient-to-r from-pink-600 to-pink-700 shadow-md h-12" data-testid="button-acleda">
+              🏦 ACLEDA
+            </Button>
+            <Button className="bg-gradient-to-r from-orange-600 to-orange-700 shadow-md h-12" data-testid="button-due">
+              📋 DUE
+            </Button>
+            <Button variant="secondary" className="h-12" data-testid="button-reopen">
+              🔄 Reopen
+            </Button>
+          </div>
         </div>
       </div>
     </div>
