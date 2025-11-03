@@ -106,6 +106,11 @@ export interface IStorage {
     todayTransactions: number;
     lowStockCount: number;
     totalCustomers: number;
+    totalExpense: number;
+    totalPurchase: number;
+    profitLoss: number;
+    totalOrders: number;
+    salesByPaymentMethod: Record<string, { amount: number; count: number }>;
   }>;
   getSalesReport(period: 'today' | 'week' | 'month'): Promise<{
     totalSales: number;
@@ -529,6 +534,7 @@ export class DatabaseStorage implements IStorage {
     const todaySalesResult = await db
       .select({
         total: sql<number>`COALESCE(SUM(CAST(${sales.total} AS NUMERIC)), 0)`,
+        subtotal: sql<number>`COALESCE(SUM(CAST(${sales.subtotal} AS NUMERIC)), 0)`,
         count: count(),
       })
       .from(sales)
@@ -536,6 +542,54 @@ export class DatabaseStorage implements IStorage {
         gte(sales.createdAt, today),
         lt(sales.createdAt, tomorrow)
       ));
+
+    // Get today's sales items to calculate purchase cost
+    const todaySaleItemsResult = await db
+      .select({
+        productId: saleItems.productId,
+        quantity: saleItems.quantity,
+      })
+      .from(saleItems)
+      .innerJoin(sales, eq(saleItems.saleId, sales.id))
+      .where(and(
+        gte(sales.createdAt, today),
+        lt(sales.createdAt, tomorrow)
+      ));
+
+    // Calculate total purchase cost
+    let totalPurchaseCost = 0;
+    for (const item of todaySaleItemsResult) {
+      const product = await this.getProduct(item.productId);
+      if (product) {
+        totalPurchaseCost += Number(product.purchasePrice) * item.quantity;
+      }
+    }
+
+    // Get total orders (all time)
+    const totalOrdersResult = await db.select({ count: count() }).from(sales);
+
+    // Get sales by payment method (today)
+    const paymentMethodResult = await db
+      .select({
+        paymentMethod: sales.paymentMethod,
+        total: sql<number>`COALESCE(SUM(CAST(${sales.total} AS NUMERIC)), 0)`,
+        count: count(),
+      })
+      .from(sales)
+      .where(and(
+        gte(sales.createdAt, today),
+        lt(sales.createdAt, tomorrow)
+      ))
+      .groupBy(sales.paymentMethod);
+
+    // Format payment methods data
+    const salesByPaymentMethod: Record<string, { amount: number; count: number }> = {};
+    for (const pm of paymentMethodResult) {
+      salesByPaymentMethod[pm.paymentMethod] = {
+        amount: Number(pm.total || 0),
+        count: pm.count || 0,
+      };
+    }
 
     // Get low stock count
     const lowStockResult = await db
@@ -546,11 +600,19 @@ export class DatabaseStorage implements IStorage {
     // Get total customers
     const customersResult = await db.select({ count: count() }).from(customers);
 
+    const todayRevenue = Number(todaySalesResult[0]?.total || 0);
+    const profitLoss = todayRevenue - totalPurchaseCost;
+
     return {
-      todaySales: Number(todaySalesResult[0]?.total || 0),
+      todaySales: todayRevenue,
       todayTransactions: todaySalesResult[0]?.count || 0,
       lowStockCount: lowStockResult[0]?.count || 0,
       totalCustomers: customersResult[0]?.count || 0,
+      totalExpense: totalPurchaseCost,
+      totalPurchase: totalPurchaseCost,
+      profitLoss: profitLoss,
+      totalOrders: totalOrdersResult[0]?.count || 0,
+      salesByPaymentMethod,
     };
   }
 
