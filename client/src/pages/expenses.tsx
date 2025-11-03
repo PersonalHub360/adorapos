@@ -82,6 +82,9 @@ export default function Expenses() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [uploadedAttachmentUrl, setUploadedAttachmentUrl] = useState<string | null>(null);
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "month">("all");
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -191,6 +194,24 @@ export default function Expenses() {
   });
 
   const filteredExpenses = expenses?.filter((expense) => {
+    const expenseDate = new Date(expense.date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Date filter
+    let dateMatch = true;
+    if (dateFilter === "today") {
+      dateMatch = expenseDate.toDateString() === today.toDateString();
+    } else if (dateFilter === "yesterday") {
+      dateMatch = expenseDate.toDateString() === yesterday.toDateString();
+    } else if (dateFilter === "month") {
+      dateMatch = expenseDate.getMonth() === selectedMonth && expenseDate.getFullYear() === selectedYear;
+    }
+
+    if (!dateMatch) return false;
+
+    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const category = expense.category.toLowerCase();
     const paymentMethod = expense.paymentMethod.toLowerCase();
@@ -613,15 +634,95 @@ export default function Expenses() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by category, payment method, amount, or reference..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-              data-testid="input-search-expenses"
-            />
+          <div className="mb-4 space-y-4">
+            {/* Date Filters */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+              <Button
+                variant={dateFilter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter("all")}
+                className="hover-elevate active-elevate-2"
+                data-testid="filter-all"
+              >
+                All
+              </Button>
+              <Button
+                variant={dateFilter === "today" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter("today")}
+                className="hover-elevate active-elevate-2"
+                data-testid="filter-today"
+              >
+                Today
+              </Button>
+              <Button
+                variant={dateFilter === "yesterday" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter("yesterday")}
+                className="hover-elevate active-elevate-2"
+                data-testid="filter-yesterday"
+              >
+                Yesterday
+              </Button>
+              <Button
+                variant={dateFilter === "month" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setDateFilter("month")}
+                className="hover-elevate active-elevate-2"
+                data-testid="filter-month"
+              >
+                By Month
+              </Button>
+              
+              {dateFilter === "month" && (
+                <>
+                  <Select value={selectedMonth.toString()} onValueChange={(val) => setSelectedMonth(parseInt(val))}>
+                    <SelectTrigger className="w-36" data-testid="select-month">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">January</SelectItem>
+                      <SelectItem value="1">February</SelectItem>
+                      <SelectItem value="2">March</SelectItem>
+                      <SelectItem value="3">April</SelectItem>
+                      <SelectItem value="4">May</SelectItem>
+                      <SelectItem value="5">June</SelectItem>
+                      <SelectItem value="6">July</SelectItem>
+                      <SelectItem value="7">August</SelectItem>
+                      <SelectItem value="8">September</SelectItem>
+                      <SelectItem value="9">October</SelectItem>
+                      <SelectItem value="10">November</SelectItem>
+                      <SelectItem value="11">December</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+                    <SelectTrigger className="w-28" data-testid="select-year">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 2040 - 2024 + 1 }, (_, i) => 2024 + i).map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by category, payment method, amount, or reference..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="input-search-expenses"
+              />
+            </div>
           </div>
 
           {isLoading ? (
