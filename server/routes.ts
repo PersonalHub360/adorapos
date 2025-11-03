@@ -694,6 +694,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Object storage routes - for file uploads
+  app.post("/api/object-storage/upload-url", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import("./objectStorage.js");
+      const objectStorage = new ObjectStorageService();
+      const uploadUrl = await objectStorage.getObjectEntityUploadURL();
+      res.json({ method: "PUT", url: uploadUrl });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
   // Expense category routes
   app.get("/api/expense-categories", isAuthenticated, async (req, res) => {
     try {

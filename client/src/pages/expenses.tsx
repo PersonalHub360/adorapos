@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   Table,
@@ -22,13 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -238,11 +232,11 @@ export default function Expenses() {
   };
 
   const handleGetUploadParameters = async () => {
-    const response = await apiRequest("POST", "/api/objects/upload", {});
+    const response = await apiRequest("POST", "/api/object-storage/upload-url", {});
     const data = await response.json();
     return {
       method: "PUT" as const,
-      url: data.uploadURL,
+      url: data.url,
     };
   };
 
@@ -250,20 +244,21 @@ export default function Expenses() {
     if (result.successful && result.successful.length > 0) {
       const uploadUrl = result.successful[0].uploadURL;
       
-      try {
-        const response = await apiRequest("PUT", "/api/expense-attachments", {
-          attachmentURL: uploadUrl,
-        });
-        const data = await response.json();
-        setUploadedAttachmentUrl(data.objectPath);
+      // Extract object path from the presigned URL
+      const url = new URL(uploadUrl);
+      const pathParts = url.pathname.split('/');
+      const bucketIndex = pathParts.indexOf('b');
+      if (bucketIndex !== -1 && bucketIndex + 2 < pathParts.length) {
+        const objectPath = pathParts.slice(bucketIndex + 2).join('/');
+        setUploadedAttachmentUrl(objectPath);
         toast({
           title: "Upload successful",
           description: "Receipt image uploaded successfully",
         });
-      } catch (error) {
+      } else {
         toast({
           title: "Error",
-          description: "Failed to save attachment",
+          description: "Failed to parse upload URL",
           variant: "destructive",
         });
       }
