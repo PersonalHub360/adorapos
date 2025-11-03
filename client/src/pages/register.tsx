@@ -199,7 +199,7 @@ export default function Register() {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 shadow-lg"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg"
               disabled={isLoading}
               data-testid="button-register"
             >
