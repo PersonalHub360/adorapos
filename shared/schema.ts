@@ -284,10 +284,29 @@ export const saleItemsRelations = relations(saleItems, ({ one }) => ({
 }));
 
 // Expenses table - Track business expenses
+// Expense categories table
+export const expenseCategories = pgTable("expense_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExpenseCategorySchema = createInsertSchema(expenseCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpenseCategory = z.infer<typeof insertExpenseCategorySchema>;
+export type ExpenseCategory = typeof expenseCategories.$inferSelect;
+
 export const expenses = pgTable("expenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   date: timestamp("date").notNull().defaultNow(),
-  category: varchar("category", { length: 100 }).notNull(), // rent, utilities, supplies, salary, etc.
+  categoryId: varchar("category_id").references(() => expenseCategories.id),
+  category: varchar("category", { length: 100 }), // Keep for backward compatibility, but prefer categoryId
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // CASH, CARD, ABA, ACLEDA, etc.
   reference: varchar("reference", { length: 100 }), // Invoice/receipt number
@@ -312,5 +331,9 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
   user: one(users, {
     fields: [expenses.createdBy],
     references: [users.id],
+  }),
+  expenseCategory: one(expenseCategories, {
+    fields: [expenses.categoryId],
+    references: [expenseCategories.id],
   }),
 }));

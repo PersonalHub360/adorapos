@@ -21,6 +21,8 @@ import {
   type InsertUnit,
   type Expense,
   type InsertExpense,
+  type ExpenseCategory,
+  type InsertExpenseCategory,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
@@ -406,6 +408,27 @@ export class MockStorage implements IStorage {
   }
 
   async deleteExpense(id: string): Promise<void> {
+    // Mock implementation - do nothing
+  }
+
+  // Expense category operations
+  async getAllExpenseCategories(): Promise<ExpenseCategory[]> {
+    return [];
+  }
+
+  async getExpenseCategory(id: string): Promise<ExpenseCategory | undefined> {
+    return undefined;
+  }
+
+  async createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory> {
+    return { ...category, id: 'mock-expense-category-id', createdAt: new Date(), updatedAt: new Date() } as ExpenseCategory;
+  }
+
+  async updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory> {
+    return { ...category, id, createdAt: new Date(), updatedAt: new Date() } as ExpenseCategory;
+  }
+
+  async deleteExpenseCategory(id: string): Promise<void> {
     // Mock implementation - do nothing
   }
 

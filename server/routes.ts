@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./localAuth";
-import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema, insertCategorySchema, insertBrandSchema, insertUnitSchema, insertExpenseSchema } from "@shared/schema";
+import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema, insertCategorySchema, insertBrandSchema, insertUnitSchema, insertExpenseSchema, insertExpenseCategorySchema } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 
@@ -690,6 +690,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting expense:", error);
       res.status(500).json({ message: "Failed to delete expense" });
+    }
+  });
+
+  // Expense category routes
+  app.get("/api/expense-categories", isAuthenticated, async (req, res) => {
+    try {
+      const categories = await storage.getAllExpenseCategories();
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching expense categories:", error);
+      res.status(500).json({ message: "Failed to fetch expense categories" });
+    }
+  });
+
+  app.post("/api/expense-categories", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertExpenseCategorySchema.parse(req.body);
+      const category = await storage.createExpenseCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid expense category data", errors: error.errors });
+      }
+      console.error("Error creating expense category:", error);
+      res.status(500).json({ message: "Failed to create expense category" });
+    }
+  });
+
+  app.patch("/api/expense-categories/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const category = await storage.updateExpenseCategory(req.params.id, req.body);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating expense category:", error);
+      res.status(500).json({ message: "Failed to update expense category" });
+    }
+  });
+
+  app.delete("/api/expense-categories/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteExpenseCategory(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting expense category:", error);
+      res.status(500).json({ message: "Failed to delete expense category" });
     }
   });
 

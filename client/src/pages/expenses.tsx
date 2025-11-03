@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import type { Expense } from "@shared/schema";
+import type { Expense, ExpenseCategory } from "@shared/schema";
 import Papa from "papaparse";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -56,7 +56,7 @@ interface ExpenseWithUser extends Expense {
 
 const expenseFormSchema = z.object({
   date: z.string(),
-  category: z.string().min(1, "Category is required"),
+  categoryId: z.string().min(1, "Category is required"),
   amount: z.string().min(1, "Amount is required"),
   paymentMethod: z.string().min(1, "Payment method is required"),
   reference: z.string().optional(),
@@ -66,11 +66,19 @@ const expenseFormSchema = z.object({
 
 type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 
+const categoryFormSchema = z.object({
+  name: z.string().min(1, "Category name is required"),
+  description: z.string().optional(),
+});
+
+type CategoryFormValues = z.infer<typeof categoryFormSchema>;
+
 export default function Expenses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExpense, setSelectedExpense] = useState<ExpenseWithUser | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -79,15 +87,27 @@ export default function Expenses() {
     queryKey: ["/api/expenses"],
   });
 
+  const { data: categories = [] } = useQuery<ExpenseCategory[]>({
+    queryKey: ["/api/expense-categories"],
+  });
+
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
-      category: "",
+      categoryId: "",
       amount: "",
       paymentMethod: "CASH",
       reference: "",
       warehouse: "",
+      description: "",
+    },
+  });
+
+  const categoryForm = useForm<CategoryFormValues>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues: {
+      name: "",
       description: "",
     },
   });
@@ -137,6 +157,29 @@ export default function Expenses() {
       toast({
         title: "Error",
         description: "Failed to delete expense",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: CategoryFormValues) => {
+      const response = await apiRequest("POST", "/api/expense-categories", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/expense-categories"] });
+      categoryForm.reset();
+      setIsCategoryDialogOpen(false);
+      toast({
+        title: "Category added",
+        description: "Category has been created successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add category",
         variant: "destructive",
       });
     },
@@ -637,13 +680,36 @@ export default function Expenses() {
                 />
                 <FormField
                   control={form.control}
-                  name="category"
+                  name="categoryId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Category *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Rent, Utilities, Salary" {...field} data-testid="input-expense-category" />
-                      </FormControl>
+                      <div className="flex gap-2">
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="flex-1" data-testid="select-expense-category">
+                              <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="hover-elevate active-elevate-2"
+                          onClick={() => setIsCategoryDialogOpen(true)}
+                          data-testid="button-add-category"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -738,6 +804,54 @@ export default function Expenses() {
                 </Button>
                 <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover-elevate active-elevate-2" disabled={createExpenseMutation.isPending} data-testid="button-submit-expense">
                   {createExpenseMutation.isPending ? "Adding..." : "Add Expense"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Category Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Expense Category</DialogTitle>
+            <DialogDescription>Create a new category for expenses</DialogDescription>
+          </DialogHeader>
+          <Form {...categoryForm}>
+            <form onSubmit={categoryForm.handleSubmit((data) => createCategoryMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={categoryForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Rent, Utilities, Salary" {...field} data-testid="input-category-name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={categoryForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Optional description" {...field} data-testid="input-category-description" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" className="flex-1 hover-elevate active-elevate-2" onClick={() => setIsCategoryDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover-elevate active-elevate-2" disabled={createCategoryMutation.isPending} data-testid="button-submit-category">
+                  {createCategoryMutation.isPending ? "Adding..." : "Add Category"}
                 </Button>
               </div>
             </form>

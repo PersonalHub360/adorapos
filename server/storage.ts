@@ -10,6 +10,7 @@ import {
   brands,
   units,
   expenses,
+  expenseCategories,
   type User,
   type UpsertUser,
   type Product,
@@ -32,6 +33,8 @@ import {
   type InsertUnit,
   type Expense,
   type InsertExpense,
+  type ExpenseCategory,
+  type InsertExpenseCategory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
@@ -110,6 +113,13 @@ export interface IStorage {
   createExpense(expense: InsertExpense): Promise<Expense>;
   updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense>;
   deleteExpense(id: string): Promise<void>;
+
+  // Expense category operations
+  getAllExpenseCategories(): Promise<ExpenseCategory[]>;
+  getExpenseCategory(id: string): Promise<ExpenseCategory | undefined>;
+  createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory>;
+  updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory>;
+  deleteExpenseCategory(id: string): Promise<void>;
 
   // Dashboard & Reports
   getDashboardStats(): Promise<{
@@ -617,6 +627,34 @@ export class DatabaseStorage implements IStorage {
 
   async deleteExpense(id: string): Promise<void> {
     await db.delete(expenses).where(eq(expenses.id, id));
+  }
+
+  // Expense category operations
+  async getAllExpenseCategories(): Promise<ExpenseCategory[]> {
+    return await db.select().from(expenseCategories).orderBy(expenseCategories.name);
+  }
+
+  async getExpenseCategory(id: string): Promise<ExpenseCategory | undefined> {
+    const [category] = await db.select().from(expenseCategories).where(eq(expenseCategories.id, id));
+    return category;
+  }
+
+  async createExpenseCategory(category: InsertExpenseCategory): Promise<ExpenseCategory> {
+    const [newCategory] = await db.insert(expenseCategories).values(category).returning();
+    return newCategory;
+  }
+
+  async updateExpenseCategory(id: string, category: Partial<InsertExpenseCategory>): Promise<ExpenseCategory> {
+    const [updated] = await db
+      .update(expenseCategories)
+      .set({ ...category, updatedAt: new Date() })
+      .where(eq(expenseCategories.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpenseCategory(id: string): Promise<void> {
+    await db.delete(expenseCategories).where(eq(expenseCategories.id, id));
   }
 
   // Dashboard & Reports
