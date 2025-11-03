@@ -194,6 +194,9 @@ export default function Dashboard() {
                 };
                 const color = colors[method];
                 
+                const amount = data?.amount ?? 0;
+                const count = data?.count ?? 0;
+                
                 return (
                   <Card key={method} className={`border-2 ${color.border} ${color.bg}`}>
                     <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
@@ -204,10 +207,10 @@ export default function Dashboard() {
                     </CardHeader>
                     <CardContent>
                       <div className={`text-2xl font-bold bg-gradient-to-r ${color.gradient} bg-clip-text text-transparent`} data-testid={`text-payment-${method.toLowerCase()}`}>
-                        ${data?.amount.toFixed(2) || '0.00'}
+                        ${amount.toFixed(2)}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {data?.count || 0} {data?.count === 1 ? 'transaction' : 'transactions'}
+                        {count} {count === 1 ? 'transaction' : 'transactions'}
                       </p>
                     </CardContent>
                   </Card>
