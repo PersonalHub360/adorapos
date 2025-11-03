@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Download, Upload, FileSpreadsheet, FileText, Plus, Eye, Search, Trash2, X } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, FileText, Plus, Eye, Search, Trash2, X, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -49,6 +49,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { ObjectUploader } from "@/components/ObjectUploader";
+import type { UploadResult } from "@uppy/core";
 
 interface ExpenseWithUser extends Expense {
   user?: { username: string; firstName?: string; lastName?: string } | null;
