@@ -14,6 +14,7 @@ import {
   Building2,
   Ruler,
   Barcode,
+  Receipt,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useState } from "react";
@@ -121,6 +122,11 @@ export function AppSidebar() {
       title: "Sales",
       url: "/sales",
       icon: FileBarChart,
+    },
+    {
+      title: "Expenses",
+      url: "/expenses",
+      icon: Receipt,
     },
     {
       title: "Inventory",

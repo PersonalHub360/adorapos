@@ -19,6 +19,8 @@ import {
   type InsertBrand,
   type Unit,
   type InsertUnit,
+  type Expense,
+  type InsertExpense,
 } from "@shared/schema";
 import { IStorage } from "./storage";
 
@@ -383,6 +385,27 @@ export class MockStorage implements IStorage {
   }
 
   async deleteUnit(id: string): Promise<void> {
+    // Mock implementation - do nothing
+  }
+
+  // Expense operations
+  async getAllExpenses(): Promise<Expense[]> {
+    return [];
+  }
+
+  async getExpense(id: string): Promise<Expense | undefined> {
+    return undefined;
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    return { ...expense, id: 'mock-expense-id', createdAt: new Date(), updatedAt: new Date() } as Expense;
+  }
+
+  async updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense> {
+    return { ...expense, id, createdAt: new Date(), updatedAt: new Date() } as Expense;
+  }
+
+  async deleteExpense(id: string): Promise<void> {
     // Mock implementation - do nothing
   }
 

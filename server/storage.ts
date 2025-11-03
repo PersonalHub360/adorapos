@@ -9,6 +9,7 @@ import {
   categories,
   brands,
   units,
+  expenses,
   type User,
   type UpsertUser,
   type Product,
@@ -29,6 +30,8 @@ import {
   type InsertBrand,
   type Unit,
   type InsertUnit,
+  type Expense,
+  type InsertExpense,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, gte, lt, lte, sql, count } from "drizzle-orm";
@@ -100,6 +103,13 @@ export interface IStorage {
   createUnit(unit: InsertUnit): Promise<Unit>;
   updateUnit(id: string, unit: Partial<InsertUnit>): Promise<Unit>;
   deleteUnit(id: string): Promise<void>;
+
+  // Expense operations
+  getAllExpenses(): Promise<Expense[]>;
+  getExpense(id: string): Promise<Expense | undefined>;
+  createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense>;
+  deleteExpense(id: string): Promise<void>;
 
   // Dashboard & Reports
   getDashboardStats(): Promise<{
@@ -556,6 +566,57 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUnit(id: string): Promise<void> {
     await db.delete(units).where(eq(units.id, id));
+  }
+
+  // Expense operations
+  async getAllExpenses(): Promise<Expense[]> {
+    return await db
+      .select({
+        id: expenses.id,
+        date: expenses.date,
+        category: expenses.category,
+        amount: expenses.amount,
+        paymentMethod: expenses.paymentMethod,
+        reference: expenses.reference,
+        warehouse: expenses.warehouse,
+        description: expenses.description,
+        attachmentUrl: expenses.attachmentUrl,
+        createdBy: expenses.createdBy,
+        createdAt: expenses.createdAt,
+        updatedAt: expenses.updatedAt,
+        user: {
+          id: users.id,
+          username: users.username,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        },
+      })
+      .from(expenses)
+      .leftJoin(users, eq(expenses.createdBy, users.id))
+      .orderBy(desc(expenses.date)) as any;
+  }
+
+  async getExpense(id: string): Promise<Expense | undefined> {
+    const [expense] = await db.select().from(expenses).where(eq(expenses.id, id));
+    return expense;
+  }
+
+  async createExpense(expense: InsertExpense): Promise<Expense> {
+    const [newExpense] = await db.insert(expenses).values(expense).returning();
+    return newExpense;
+  }
+
+  async updateExpense(id: string, expense: Partial<InsertExpense>): Promise<Expense> {
+    const [updated] = await db
+      .update(expenses)
+      .set({ ...expense, updatedAt: new Date() })
+      .where(eq(expenses.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteExpense(id: string): Promise<void> {
+    await db.delete(expenses).where(eq(expenses.id, id));
   }
 
   // Dashboard & Reports

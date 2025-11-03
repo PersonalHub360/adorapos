@@ -282,3 +282,35 @@ export const saleItemsRelations = relations(saleItems, ({ one }) => ({
     references: [products.id],
   }),
 }));
+
+// Expenses table - Track business expenses
+export const expenses = pgTable("expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull().defaultNow(),
+  category: varchar("category", { length: 100 }).notNull(), // rent, utilities, supplies, salary, etc.
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(), // CASH, CARD, ABA, ACLEDA, etc.
+  reference: varchar("reference", { length: 100 }), // Invoice/receipt number
+  warehouse: varchar("warehouse", { length: 100 }),
+  description: text("description"),
+  attachmentUrl: text("attachment_url"), // Receipt/invoice file
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertExpenseSchema = createInsertSchema(expenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertExpense = z.infer<typeof insertExpenseSchema>;
+export type Expense = typeof expenses.$inferSelect;
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  user: one(users, {
+    fields: [expenses.createdBy],
+    references: [users.id],
+  }),
+}));

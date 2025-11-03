@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./localAuth";
-import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema, insertCategorySchema, insertBrandSchema, insertUnitSchema } from "@shared/schema";
+import { insertProductSchema, insertCustomerSchema, insertPromoCodeSchema, insertPaperSizeSchema, insertCategorySchema, insertBrandSchema, insertUnitSchema, insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User } from "@shared/schema";
 
@@ -580,6 +580,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting unit:", error);
       res.status(500).json({ message: "Failed to delete unit" });
+    }
+  });
+
+  // Expense routes
+  app.get("/api/expenses", isAuthenticated, async (req, res) => {
+    try {
+      const expenses = await storage.getAllExpenses();
+      res.json(expenses);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      res.status(500).json({ message: "Failed to fetch expenses" });
+    }
+  });
+
+  app.get("/api/expenses/:id", isAuthenticated, async (req, res) => {
+    try {
+      const expense = await storage.getExpense(req.params.id);
+      if (!expense) {
+        return res.status(404).json({ message: "Expense not found" });
+      }
+      res.json(expense);
+    } catch (error) {
+      console.error("Error fetching expense:", error);
+      res.status(500).json({ message: "Failed to fetch expense" });
+    }
+  });
+
+  app.post("/api/expenses", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const validatedData = insertExpenseSchema.parse(req.body);
+      const expense = await storage.createExpense(validatedData);
+      res.status(201).json(expense);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid expense data", errors: error.errors });
+      }
+      console.error("Error creating expense:", error);
+      res.status(500).json({ message: "Failed to create expense" });
+    }
+  });
+
+  app.post("/api/expenses/import", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { expenses: expensesData } = req.body;
+      
+      if (!Array.isArray(expensesData)) {
+        return res.status(400).json({ message: "Invalid import data" });
+      }
+
+      let imported = 0;
+      const errors: string[] = [];
+
+      for (const row of expensesData) {
+        try {
+          if (!row['Category'] || !row['Amount']) {
+            continue;
+          }
+
+          const amount = parseFloat(row['Amount']);
+          if (isNaN(amount) || amount <= 0) {
+            continue;
+          }
+
+          const expense = {
+            date: row['Date'] ? new Date(row['Date']) : new Date(),
+            category: row['Category'],
+            amount: amount.toFixed(2),
+            paymentMethod: row['Payment Method'] || 'CASH',
+            reference: row['Reference'] || null,
+            warehouse: row['Warehouse'] || null,
+            description: row['Description'] || null,
+            attachmentUrl: null,
+            createdBy: (req.user as User).id,
+          };
+
+          await storage.createExpense(expense);
+          imported++;
+        } catch (rowError) {
+          errors.push(`Failed to import row: ${JSON.stringify(row)}`);
+        }
+      }
+
+      res.json({ 
+        imported, 
+        errors: errors.length > 0 ? errors : undefined,
+        message: `Successfully imported ${imported} expenses`
+      });
+    } catch (error) {
+      console.error("Error importing expenses:", error);
+      res.status(500).json({ message: "Failed to import expenses" });
+    }
+  });
+
+  app.patch("/api/expenses/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const expense = await storage.updateExpense(req.params.id, req.body);
+      res.json(expense);
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      res.status(500).json({ message: "Failed to update expense" });
+    }
+  });
+
+  app.delete("/api/expenses/:id", isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      await storage.deleteExpense(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting expense:", error);
+      res.status(500).json({ message: "Failed to delete expense" });
     }
   });
 
