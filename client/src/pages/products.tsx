@@ -75,6 +75,7 @@ export default function Products() {
     price: true,
     promoPrice: false,
   });
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const { toast } = useToast();
   const { isAdmin } = useAuth();
 
@@ -557,6 +558,7 @@ export default function Products() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600"
+                          onClick={() => setViewingProduct(product)}
                           data-testid={`button-view-${product.id}`}
                         >
                           <Eye className="h-4 w-4" />
@@ -1047,6 +1049,118 @@ export default function Products() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Product Dialog */}
+      <Dialog open={!!viewingProduct} onOpenChange={() => setViewingProduct(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Product Details</DialogTitle>
+            <DialogDescription>
+              View complete product information
+            </DialogDescription>
+          </DialogHeader>
+          {viewingProduct && (
+            <div className="space-y-6">
+              <div className="flex gap-6">
+                <div className="h-32 w-32 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+                  {viewingProduct.imageUrl ? (
+                    <img
+                      src={viewingProduct.imageUrl}
+                      alt={viewingProduct.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-5xl text-muted-foreground/30">
+                      {viewingProduct.name[0]}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 space-y-2">
+                  <h3 className="text-2xl font-bold">{viewingProduct.name}</h3>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">{viewingProduct.category}</Badge>
+                    {viewingProduct.size && <Badge variant="outline">{viewingProduct.size}</Badge>}
+                    {viewingProduct.color && <Badge variant="outline">{viewingProduct.color}</Badge>}
+                  </div>
+                  <Badge className={
+                    viewingProduct.stock === 0 ? "bg-red-500" :
+                    viewingProduct.stock <= viewingProduct.lowStockThreshold ? "bg-orange-500" :
+                    "bg-green-500"
+                  }>
+                    {getStockStatus(viewingProduct.stock, viewingProduct.lowStockThreshold)}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Product Code</p>
+                  <p className="font-medium">{viewingProduct.sku || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Barcode Type</p>
+                  <p className="font-medium">{viewingProduct.barcodeSymbology || 'Code128'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Stock Quantity</p>
+                  <p className="font-medium text-lg">{viewingProduct.stock} units</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Low Stock Alert</p>
+                  <p className="font-medium">{viewingProduct.lowStockThreshold} units</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Purchase Price</p>
+                  <p className="font-medium">${parseFloat(viewingProduct.purchasePrice || '0').toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Sales Price</p>
+                  <p className="font-medium text-lg">${parseFloat(viewingProduct.price).toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tax Rate</p>
+                  <p className="font-medium">{parseFloat(viewingProduct.taxRate || '0').toFixed(2)}%</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Stock Value</p>
+                  <p className="font-medium text-lg">
+                    ${(parseFloat(viewingProduct.price) * viewingProduct.stock).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {viewingProduct.description && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Description</p>
+                  <p className="text-sm">{viewingProduct.description}</p>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setViewingProduct(null)}
+                >
+                  Close
+                </Button>
+                {isAdmin && (
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      setEditingProduct(viewingProduct);
+                      setViewingProduct(null);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Product
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

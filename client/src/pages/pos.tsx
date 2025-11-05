@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Search, Trash2, Calendar, User, Plus, Minus, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Product, Customer } from "@shared/schema";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface CartItem {
   product: Product;
@@ -40,6 +42,7 @@ export default function POS() {
   const [scanMode, setScanMode] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scanTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { toast } = useToast();
 
   const { data: products } = useQuery<Product[]>({
     queryKey: ["/api/products"],
@@ -119,13 +122,74 @@ export default function POS() {
     setCart(cart.filter(item => item.product.id !== productId));
   };
 
-  const subtotal = cart.reduce((sum, item) => 
+  const subtotal = cart.reduce((sum, item) =>
     sum + (parseFloat(item.product.price) * item.quantity), 0
   );
-  
+
   const totalDiscount = discount + coupon;
   const grandTotal = Math.max(0, subtotal - totalDiscount + tax + shipping);
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+  const createSaleMutation = useMutation({
+    mutationFn: async (paymentMethod: string) => {
+      const sale = {
+        customerId: selectedCustomer === "walk-in" ? null : selectedCustomer,
+        paymentMethod,
+        subtotal: subtotal.toString(),
+        discount: totalDiscount.toString(),
+        tax: tax.toString(),
+        shipping: shipping.toString(),
+        total: grandTotal.toString(),
+        date: new Date(selectedDate),
+      };
+
+      const items = cart.map(item => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        subtotal: (parseFloat(item.product.price) * item.quantity).toString(),
+      }));
+
+      await apiRequest("POST", "/api/sales", { sale, items });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sales"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+
+      setCart([]);
+      setCoupon(0);
+      setDiscount(0);
+      setShipping(0);
+      setTax(0);
+
+      toast({
+        title: "Sale completed",
+        description: `Total: $${grandTotal.toFixed(2)}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process sale",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handlePayment = (paymentMethod: string) => {
+    if (cart.length === 0) {
+      toast({
+        title: "Empty cart",
+        description: "Please add items to cart before processing payment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createSaleMutation.mutate(paymentMethod);
+  };
 
   return (
     <div className="h-full p-6 bg-background">
@@ -339,22 +403,58 @@ export default function POS() {
         <div className="space-y-2">
           <Label className="text-sm font-semibold">Payment Method</Label>
           <div className="grid grid-cols-3 gap-3">
-            <Button className="bg-gradient-to-r from-emerald-600 to-emerald-700 shadow-md h-12" data-testid="button-cash">
+            <Button
+              className="bg-gradient-to-r from-emerald-600 to-emerald-700 shadow-md h-12"
+              onClick={() => handlePayment("CASH")}
+              disabled={createSaleMutation.isPending}
+              data-testid="button-cash"
+            >
               💵 CASH
             </Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-md h-12" data-testid="button-card">
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-blue-700 shadow-md h-12"
+              onClick={() => handlePayment("CARD")}
+              disabled={createSaleMutation.isPending}
+              data-testid="button-card"
+            >
               💳 CARD
             </Button>
-            <Button className="bg-gradient-to-r from-purple-600 to-purple-700 shadow-md h-12" data-testid="button-aba">
+            <Button
+              className="bg-gradient-to-r from-purple-600 to-purple-700 shadow-md h-12"
+              onClick={() => handlePayment("ABA")}
+              disabled={createSaleMutation.isPending}
+              data-testid="button-aba"
+            >
               🏦 ABA
             </Button>
-            <Button className="bg-gradient-to-r from-pink-600 to-pink-700 shadow-md h-12" data-testid="button-acleda">
+            <Button
+              className="bg-gradient-to-r from-pink-600 to-pink-700 shadow-md h-12"
+              onClick={() => handlePayment("ACLEDA")}
+              disabled={createSaleMutation.isPending}
+              data-testid="button-acleda"
+            >
               🏦 ACLEDA
             </Button>
-            <Button className="bg-gradient-to-r from-orange-600 to-orange-700 shadow-md h-12" data-testid="button-due">
+            <Button
+              className="bg-gradient-to-r from-orange-600 to-orange-700 shadow-md h-12"
+              onClick={() => handlePayment("DUE")}
+              disabled={createSaleMutation.isPending}
+              data-testid="button-due"
+            >
               📋 DUE
             </Button>
-            <Button variant="secondary" className="h-12" data-testid="button-reopen">
+            <Button
+              variant="secondary"
+              className="h-12"
+              onClick={() => {
+                setCart([]);
+                setCoupon(0);
+                setDiscount(0);
+                setShipping(0);
+                setTax(0);
+              }}
+              data-testid="button-reopen"
+            >
               🔄 Reopen
             </Button>
           </div>
